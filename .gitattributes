@@ -1,0 +1,66 @@
+# Auto detect text files and perform LF normalization on check-in
+* text=auto
+
+# ==============================================================================
+# Source code and configuration files (Normalized to LF)
+# ==============================================================================
+*.cs            text diff=csharp
+*.csx           text diff=csharp
+*.csproj        text
+*.fsproj        text
+*.vbproj        text
+*.sln           text eol=crlf
+*.props         text
+*.targets       text
+*.config        text
+*.xml           text
+*.json          text
+*.jsonld        text
+*.yaml          text
+*.yml           text
+*.md            text
+*.txt           text
+*.editorconfig  text eol=lf
+.gitattributes  text eol=lf
+.gitignore      text eol=lf
+
+# Shell & Scripts
+*.sh            text eol=lf
+*.bash          text eol=lf
+*.ps1           text eol=crlf
+*.cmd           text eol=crlf
+*.bat           text eol=crlf
+
+# ==============================================================================
+# Binary files - explicit non-text treatment to prevent corruption
+# ==============================================================================
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.svg           text
+*.pdf           binary
+*.zip           binary
+*.tar.gz        binary
+*.7z            binary
+*.dll           binary
+*.exe           binary
+*.pdb           binary
+*.so            binary
+*.dylib         binary
+*.nupkg         binary
+*.snupkg        binary
+*.pfx           binary
+*.snk           binary
+*.ttf           binary
+*.woff          binary
+*.woff2         binary
+
+# ==============================================================================
+# Git archive exports (Exclude repo infrastructure from source distribution zips)
+# ==============================================================================
+.github/        export-ignore
+.editorconfig   export-ignore
+.gitattributes  export-ignore
+.gitignore      text eol=lf export-ignore
