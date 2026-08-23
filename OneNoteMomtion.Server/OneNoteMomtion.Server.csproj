@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Silnik dziala jako osobny proces, wiec nie obowiazuje go ograniczenie IDispatch, ktore trzyma
+         OneNoteMomtion.AddIn na .NET Framework. Oddzielny proces daje takze wlasny watek UI - hostowanie
+         WebView2 na watku interfejsu Office'a wchodzi w konflikt z jego modalnymi petlami komunikatow. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>OneNoteMomtion.Server</RootNamespace>
+    <AssemblyName>OneNoteMomtion.Server</AssemblyName>
+    <Description>OneNoteMomtion engine: OneNote automation, command dispatch and the WebView2 palette.</Description>
+
+    <!-- Tylko PlatformTarget, bez <Platforms> - patrz komentarz w OneNoteMomtion.AddIn.csproj:
+         <Platforms> dodaje osobna platforme solucji, ktora .esproj nie umie zmapowac. -->
+    <PlatformTarget>x64</PlatformTarget>
+
+    <!-- RID jest potrzebny, zeby natywny WebView2Loader.dll trafil do katalogu wyjsciowego. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4129.50" />
+
+    <!-- Lekki, gotowy wrapper interopu COM dla natywnego UI Automation (uzywany m.in. przez FlaUI) -
+         pozwala odczytac karetke tekstowa z OneNote::DocumentCanvas bez ciagniecia calego WPF, ktore
+         normalnie hostuje System.Windows.Automation (patrz komentarz przy RemoveWebView2WpfReference
+         nizej o konfliktach WPF w tym projekcie). -->
+    <PackageReference Include="Interop.UIAutomationClient" Version="10.19041.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OneNoteMomtion.Core\OneNoteMomtion.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Pakiet WebView2 dodaje nakladke WPF bezwarunkowo, niezaleznie od UseWPF. Paleta jest napisana
+       w WinForms, a nakladka WPF ciagnie WindowsBase 5.0.0.0 i konfliktuje z wersja z frameworka
+       (MSB3277). Usuwamy referencje po tym, jak dolozy ja plik targets pakietu. -->
+  <Target Name="RemoveWebView2WpfReference" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference-&gt;WithMetadataValue('Filename', 'Microsoft.Web.WebView2.Wpf'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Zbudowany frontend laduje obok pliku wykonywalnego; WebView2 mapuje ten katalog jako wirtualny host
+       (patrz Ui\PaletteWindow.cs). Brak dist/ nie psuje kompilacji - paleta pokaze wtedy komunikat.
+
+       Zwykle <Content> z <Link>, a nie wlasny <Copy> po Build: kopiowanie do $(OutDir) omija publish,
+       ktory zabiera tylko to, co jest elementem projektu. Instalator stawia silnik przez
+       `dotnet publish`, wiec przy wlasnym targecie katalog wwwroot nie trafial do instalacji
+       i paleta w kazdej zainstalowanej wersji pokazywala komunikat o braku frontendu. -->
+  <ItemGroup>
+    <Content Include="..\OneNoteMomtion.Frontend\dist\**\*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

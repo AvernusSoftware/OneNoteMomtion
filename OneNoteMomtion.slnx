@@ -1,0 +1,15 @@
+<Solution>
+  <Project Path="OneNoteMomtion.Core/OneNoteMomtion.Core.csproj" />
+  <Project Path="OneNoteMomtion.Core.Tests/OneNoteMomtion.Core.Tests.csproj" />
+  <Project Path="OneNoteMomtion.AddIn/OneNoteMomtion.AddIn.csproj" />
+  <Project Path="OneNoteMomtion.Server/OneNoteMomtion.Server.csproj" />
+  <Project Path="OneNoteMomtion.Frontend/OneNoteMomtion.Frontend.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+    <File Path="LICENSE" />
+    <File Path="CLAUDE.md" />
+  </Folder>
+</Solution>

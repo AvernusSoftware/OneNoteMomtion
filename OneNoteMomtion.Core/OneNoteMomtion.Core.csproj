@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>OneNoteMomtion.Core</RootNamespace>
+    <AssemblyName>OneNoteMomtion.Core</AssemblyName>
+    <Description>Domain logic for OneNoteMomtion: OneNote page XML manipulation, text transformations and syntax highlighting.</Description>
+  </PropertyGroup>
+
+</Project>

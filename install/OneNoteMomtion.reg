@@ -1,0 +1,99 @@
+Windows Registry Editor Version 5.00
+
+; ============================================================================
+;  OneNoteMomtion - registry template
+; ============================================================================
+;
+;  This file documents every key the add-in needs. It is a TEMPLATE: the two
+;  placeholders below must be replaced before importing.
+;
+;    __INSTALL_DIR__        Folder holding OneNoteMomtion.AddIn.dll, with every
+;                           backslash DOUBLED, e.g.
+;                           C:\\Users\\me\\AppData\\Local\\OneNoteMomtion\\bin
+;    __ASSEMBLY_VERSION__   Version of OneNoteMomtion.AddIn.dll, e.g. 0.1.0.0
+;
+;  The supported way to install is install.ps1, which fills these in from the
+;  actual build output and needs no administrator rights. Import this file by
+;  hand only if you want to inspect or repair the registration.
+;
+;  Everything lives under HKEY_CURRENT_USER on purpose: a per-user install
+;  requires no elevation, and Office enables add-ins per user anyway.
+; ============================================================================
+
+; --- COM surrogate ----------------------------------------------------------
+;
+;  OneNote activates its add-ins out of process, in dllhost.exe. An AppID whose
+;  DllSurrogate is the empty string is what makes that possible. Measured, not
+;  assumed: remove this key and OneNote never creates the add-in object at all -
+;  the constructor never reaches the log - even though a direct CoCreateInstance
+;  with CLSCTX_INPROC_SERVER still activates the class in process without it.
+;  OneMore registers the same pair of entries. This is the one entry regasm does
+;  not write.
+;
+;  The consequence is easy to forget while reading the code: the shim runs in
+;  DllHost.exe, not in ONENOTE.EXE, so Process.GetCurrentProcess() there is the
+;  surrogate. See the remarks on EngineProcess.
+
+[HKEY_CURRENT_USER\Software\Classes\AppID\{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}]
+"DllSurrogate"=""
+
+; --- COM class registration (what regasm /codebase would write to HKCR) -----
+;
+;  No TypeLib subkey: this add-in ships no type library. Earlier versions pointed
+;  one at the class id, a GUID that resolves to nothing. Being called across a
+;  process boundary, COM does need type information for our interfaces, but it
+;  takes it from the libraries that declare them - msaddndr and MSO, reached
+;  through the IID under HKCR\Interface - not from anything we register here.
+
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}]
+@="OneNoteMomtion.AddIn"
+"AppID"="{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}"
+
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}\InprocServer32]
+@="mscoree.dll"
+"ThreadingModel"="Both"
+"Class"="OneNoteMomtion.AddIn.AddIn"
+"Assembly"="OneNoteMomtion.AddIn, Version=__ASSEMBLY_VERSION__, Culture=neutral, PublicKeyToken=null"
+"RuntimeVersion"="v4.0.30319"
+"CodeBase"="file:///__INSTALL_DIR__\\OneNoteMomtion.AddIn.dll"
+
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}\InprocServer32\__ASSEMBLY_VERSION__]
+"Class"="OneNoteMomtion.AddIn.AddIn"
+"Assembly"="OneNoteMomtion.AddIn, Version=__ASSEMBLY_VERSION__, Culture=neutral, PublicKeyToken=null"
+"RuntimeVersion"="v4.0.30319"
+"CodeBase"="file:///__INSTALL_DIR__\\OneNoteMomtion.AddIn.dll"
+
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}\ProgId]
+@="OneNoteMomtion.AddIn"
+
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}\VersionIndependentProgID]
+@="OneNoteMomtion.AddIn"
+
+[HKEY_CURRENT_USER\Software\Classes\CLSID\{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}\Programmable]
+@=""
+
+[HKEY_CURRENT_USER\Software\Classes\OneNoteMomtion.AddIn]
+@="OneNoteMomtion"
+
+[HKEY_CURRENT_USER\Software\Classes\OneNoteMomtion.AddIn\CLSID]
+@="{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}"
+
+[HKEY_CURRENT_USER\Software\Classes\OneNoteMomtion.AddIn\CurVer]
+@="OneNoteMomtion.AddIn.1"
+
+[HKEY_CURRENT_USER\Software\Classes\OneNoteMomtion.AddIn.1]
+@="OneNoteMomtion"
+
+[HKEY_CURRENT_USER\Software\Classes\OneNoteMomtion.AddIn.1\CLSID]
+@="{7F6CF95B-A3C4-4EFC-A774-9F0A4B741C46}"
+
+; --- The key OneNote itself reads ------------------------------------------
+;
+;  LoadBehavior 3 means "load at startup". Office rewrites it to 2 when the
+;  add-in throws during load or slows startup down, and then stops loading it
+;  until you re-enable it by hand. See the troubleshooting section of INSTALL.md.
+
+[HKEY_CURRENT_USER\Software\Microsoft\Office\OneNote\AddIns\OneNoteMomtion.AddIn]
+"FriendlyName"="OneNoteMomtion"
+"Description"="Notion-style editing tools for OneNote: Markdown shortcuts, styles, syntax highlighting and text case."
+"LoadBehavior"=dword:00000003

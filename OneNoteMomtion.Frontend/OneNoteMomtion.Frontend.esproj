@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.5581896">
+  <PropertyGroup>
+    <!-- Wzorzec przejety z D:\Projekty\eMomtion\eMomtionFrontend\ScrumBoardFrontend.esproj.
+         ShouldRunNpmInstall/ShouldRunBuildScript = false to klucz do tego, zeby Visual Studio
+         nie probowalo samo odpalac npm przy kazdym buildzie solucji (zrodlo problemow z ladowaniem). -->
+    <StartupCommand>npm run dev</StartupCommand>
+    <ShouldRunNpmInstall>false</ShouldRunNpmInstall>
+    <ShouldRunBuildScript>false</ShouldRunBuildScript>
+    <PublishFolderName>dist</PublishFolderName>
+  </PropertyGroup>
+</Project>

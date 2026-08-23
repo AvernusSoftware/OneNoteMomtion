@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net48 jest tu wymuszony przez jedna rzecz: Office rozwiazuje metody zwrotne wstazki przez
+         IDispatch::GetIDsOfNames na obiekcie dodatku, a .NET Core nie wystawia juz IDispatch dla obiektow
+         zarzadzanych. Ten projekt zawiera wylacznie to, co musi z tego powodu zostac na .NET Framework;
+         cala reszta pracy dzieje sie w OneNoteMomtion.Server na .NET 10. -->
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>OneNoteMomtion.AddIn</RootNamespace>
+    <AssemblyName>OneNoteMomtion.AddIn</AssemblyName>
+    <Description>Thin OneNote COM add-in shim: ribbon UI and engine process lifecycle.</Description>
+
+    <!-- Bitowosc MUSI zgadzac sie z OneNote (zweryfikowano: ONENOTE.EXE jest x64).
+         Tylko PlatformTarget, bez <Platforms> - <Platforms> dodaje "x64" jako osobna
+         platforme solucji, a wtedy VS musi ja mapowac na "Any CPU" z .esproj (ktory
+         nie ma wlasnej listy platform) i gubi sie: "Current solution contains unknown
+         project configuration mappings". PlatformTarget sam w sobie wymusza bitowosc
+         w skompilowanym assembly, nie dotykajac listy platform solucji. -->
+    <PlatformTarget>x64</PlatformTarget>
+
+    <ComVisible>false</ComVisible>
+
+    <!-- Celowo false. Ustawienie true uruchamia RegAsm w trakcie budowania, co pisze do HKCR
+         i wymagaloby elewacji przy KAZDYM `dotnet build`. Rejestracje robi install/install.ps1.
+         Opt-in dla builda z podniesionymi uprawnieniami: -p:RegisterForComInterop=true -->
+    <RegisterForComInterop Condition="'$(RegisterForComInterop)' == ''">false</RegisterForComInterop>
+
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!-- Zadnych pakietow NuGet ani referencji projektowych. Kazda zaleznosc musialaby byc rozwiazywana
+       recznie przez AssemblyResolve, bo srodowisko uruchomieniowe szuka ich obok ONENOTE.EXE. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Ribbon\Ribbon.xml" />
+  </ItemGroup>
+
+  <!-- Interfejsy hosta bierzemy z gotowych zestawow wspolpracy Microsoftu zamiast deklarowac je recznie.
+       Recznej deklaracji nie da sie zweryfikowac inaczej niz uruchomieniem dodatku, a jeden zly atrybut
+       daje ten sam objaw co kazdy inny blad ladowania: brak zakladki i LoadBehavior przestawione na 2.
+
+       EmbedInteropTypes wtapia uzyte typy w nasz zestaw, wiec mimo referencji nie powstaje zaleznosc
+       do rozwiazania w czasie dzialania - obok ONENOTE.EXE nie musi lezec zaden dodatkowy plik.
+       Zgodnosc typow COM idzie po identyfikatorze interfejsu, wiec wtopiona kopia jest dla Office
+       tym samym interfejsem co oryginal.
+
+         extensibility  IDTExtensibility2, ext_ConnectMode, ext_DisconnectMode (z msaddndr.dll);
+                        dostarczana z Visual Studio, wersja 7.0.3300.0 jest niezmienna od 2002 roku.
+         office         IRibbonExtensibility, IRibbonControl, IRibbonUI (biblioteka obiektow Office);
+                        instalowana razem z pakietem Office jako zestaw glownej wspolpracy. -->
+  <!-- Sciezki podane wprost, bo `dotnet build` nie przeszukuje globalnej pamieci zestawow - robi to
+       tylko MSBuild z .NET Framework. Numery wersji sa tu stale, a nie przypadkowe: Extensibility
+       nie zmienila sie od 2002 roku, a zestaw wspolpracy Office ma wersje 15.0.0.0 we wszystkich
+       wydaniach od Office 2013 wlacznie z Microsoft 365. -->
+  <PropertyGroup>
+    <GlobalAssemblyCache>$(WinDir)\assembly</GlobalAssemblyCache>
+    <ExtensibilityPia Condition="'$(ExtensibilityPia)' == '' And Exists('$(GlobalAssemblyCache)\GAC\Extensibility\7.0.3300.0__b03f5f7f11d50a3a\Extensibility.dll')">$(GlobalAssemblyCache)\GAC\Extensibility\7.0.3300.0__b03f5f7f11d50a3a\Extensibility.dll</ExtensibilityPia>
+    <ExtensibilityPia Condition="'$(ExtensibilityPia)' == '' And Exists('$(DevEnvDir)PublicAssemblies\extensibility.dll')">$(DevEnvDir)PublicAssemblies\extensibility.dll</ExtensibilityPia>
+    <OfficePia Condition="'$(OfficePia)' == '' And Exists('$(GlobalAssemblyCache)\GAC_MSIL\office\15.0.0.0__71e9bce111e9429c\Office.dll')">$(GlobalAssemblyCache)\GAC_MSIL\office\15.0.0.0__71e9bce111e9429c\Office.dll</OfficePia>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Extensibility">
+      <HintPath>$(ExtensibilityPia)</HintPath>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Office">
+      <HintPath>$(OfficePia)</HintPath>
+      <EmbedInteropTypes>true</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Bez tego brak zestawu objawia sie kilkunastoma bledami CS0246 o nieznanych typach, po ktorych
+       nie widac, ze zabraklo czegos na maszynie, a nie w kodzie. -->
+  <Target Name="CheckInteropAssemblies" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(ExtensibilityPia)' == ''"
+           Text="Nie znaleziono zestawu Extensibility (msaddndr). Dostarcza go Visual Studio; wskaz plik recznie przez -p:ExtensibilityPia=&lt;sciezka&gt;." />
+    <Error Condition="'$(OfficePia)' == ''"
+           Text="Nie znaleziono zestawu glownej wspolpracy Office (Microsoft.Office.Core). Instaluje sie razem z pakietem Office; wskaz plik recznie przez -p:OfficePia=&lt;sciezka&gt;." />
+  </Target>
+
+</Project>
