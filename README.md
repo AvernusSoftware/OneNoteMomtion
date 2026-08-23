@@ -21,6 +21,11 @@ palette bound to `Ctrl+Space`.
 
 ## Install
 
+**From a release package:** everything in it is already built. Close OneNote and run `install.ps1`
+from the unpacked folder — it only copies and registers, so neither the .NET SDK nor Node.js is
+needed, just the .NET 10 Desktop Runtime and the WebView2 Runtime. The rest of this section covers
+installing from source.
+
 ```powershell
 git clone https://github.com/AvernusSoftware/OneNoteMomtion.git
 cd OneNoteMomtion\install
@@ -169,6 +174,9 @@ npm run build
 ```
 
 Open `OneNoteMomtion.slnx` in Visual Studio 2026 to work on it.
+
+To cut a release, run `install\pack-release.ps1`: it builds the frontend, publishes the engine and
+lays out a self-installing package in `dist\` — zip that folder and ship it.
 
 ### Project layout
 

@@ -91,7 +91,7 @@ Windows Registry Editor Version 5.00
 ;
 ;  LoadBehavior 3 means "load at startup". Office rewrites it to 2 when the
 ;  add-in throws during load or slows startup down, and then stops loading it
-;  until you re-enable it by hand. See the troubleshooting section of INSTALL.md.
+;  until you re-enable it by hand. See the troubleshooting section of README.md.
 
 [HKEY_CURRENT_USER\Software\Microsoft\Office\OneNote\AddIns\OneNoteMomtion.AddIn]
 "FriendlyName"="OneNoteMomtion"

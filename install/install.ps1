@@ -1,8 +1,17 @@
 <#
 .SYNOPSIS
-    Builds OneNoteMomtion and registers it for the current user.
+    Installs OneNoteMomtion for the current user, building it first when run from the sources.
 
 .DESCRIPTION
+    Runs in one of two modes, decided by what sits next to the script:
+
+      Release package - an unpacked release has a bin\ folder holding the finished build. Nothing
+                        is compiled: the folder is copied to InstallPath and registered. Needs the
+                        .NET 10 Desktop Runtime, nothing else.
+      Repository      - a source checkout builds the frontend, the engine and the COM shim first.
+                        Needs the .NET 10 SDK, Node.js and the interop assemblies the shim
+                        references.
+
     Does not need administrator rights. Every registry key goes under HKEY_CURRENT_USER,
     including the COM class registration - the same entries `regasm /codebase` would write
     to HKEY_CLASSES_ROOT, only per user. That is also why regasm is not used here: it writes
@@ -16,12 +25,13 @@
     Where to copy the build output. Defaults to %LOCALAPPDATA%\OneNoteMomtion\bin.
 
 .PARAMETER SkipBuild
-    Register what is already in InstallPath instead of rebuilding. Useful after editing
-    styles.json or when repairing a broken registration.
+    Register what is already in InstallPath instead of building or copying anything. Useful after
+    editing styles.json or when repairing a broken registration.
 
 .PARAMETER SkipFrontend
     Skip the npm install/build step. The palette will show a placeholder page until the
-    frontend is built at least once.
+    frontend is built at least once. Ignored when running from a release package, where the
+    frontend is already built.
 
 .PARAMETER SkipTrustedProtocol
     Do not prompt for elevation to put the momtion: protocol on Office's trusted list. The
@@ -67,6 +77,11 @@ $RepoRoot = Split-Path -Parent $PSScriptRoot
 $AddInProject = Join-Path $RepoRoot 'OneNoteMomtion.AddIn\OneNoteMomtion.AddIn.csproj'
 $ServerProject = Join-Path $RepoRoot 'OneNoteMomtion.Server\OneNoteMomtion.Server.csproj'
 $FrontendPath = Join-Path $RepoRoot 'OneNoteMomtion.Frontend'
+
+# A release package is this script sitting next to a bin\ folder with the engine already built in it,
+# which is exactly what pack-release.ps1 produces. In a source checkout that folder does not exist.
+$PackageBin = Join-Path $PSScriptRoot 'bin'
+$IsPackage = Test-Path (Join-Path $PackageBin 'OneNoteMomtion.Server.exe')
 
 function Write-Step([string] $Message) {
     Write-Host ''
@@ -116,7 +131,20 @@ function Invoke-Native {
 
 Write-Step 'Checking prerequisites'
 
-if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
+if ($IsPackage) {
+    # Deliberately not `dotnet --list-runtimes`: a runtime-only installation does not have to put
+    # dotnet on PATH, and the engine is a WinExe - launched without its runtime it dies before the
+    # log is opened, leaving a ribbon whose every button does nothing.
+    $desktopRuntimes = Get-ChildItem (Join-Path $env:ProgramFiles 'dotnet\shared\Microsoft.WindowsDesktop.App') -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like '10.*' }
+
+    if (-not $desktopRuntimes) {
+        throw 'The .NET 10 Desktop Runtime (x64) was not found. Get it from https://dotnet.microsoft.com/download/dotnet/10.0 and run this script again.'
+    }
+
+    Write-Ok ".NET Desktop Runtime: $(($desktopRuntimes | Sort-Object Name | Select-Object -Last 1).Name)"
+}
+elseif (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     throw 'The .NET SDK was not found on PATH. Install .NET 10 SDK and try again.'
 }
 
@@ -161,7 +189,27 @@ Get-CimInstance Win32_Process -Filter "Name = 'dllhost.exe'" |
 
 # --- Build ------------------------------------------------------------------
 
-if (-not $SkipBuild) {
+if ($IsPackage -and -not $SkipBuild) {
+    Write-Step 'Copying the release build'
+
+    if ($SkipFrontend) {
+        Write-Warn '-SkipFrontend ignored: a release package ships the frontend already built.'
+    }
+
+    # Copy-Item with a wildcard source drops an existing subfolder inside itself (wwwroot\wwwroot),
+    # and files left by an older release would linger anyway, so the folder starts out empty. Only
+    # build output lives here: styles.json, the logs and the WebView2 profile sit outside it.
+    if (Test-Path $InstallPath) {
+        Remove-Item (Join-Path $InstallPath '*') -Recurse -Force
+    }
+    else {
+        New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
+    }
+
+    Copy-Item (Join-Path $PackageBin '*') -Destination $InstallPath -Recurse -Force
+    Write-Ok "Copied to $InstallPath"
+}
+elseif (-not $SkipBuild) {
     if (-not $SkipFrontend) {
         Write-Step 'Building the React frontend'
 
@@ -491,4 +539,4 @@ Write-Host "    Settings     : $(Join-Path $env:APPDATA 'OneNoteMomtion\styles.j
 Write-Host "    Log file     : $(Join-Path $env:LOCALAPPDATA 'OneNoteMomtion\logs\addin.log')"
 Write-Host ''
 Write-Host '    Start OneNote and look for the OneNoteMomtion tab on the ribbon.'
-Write-Host '    If it is missing, check the log file and the troubleshooting section of INSTALL.md.'
+Write-Host '    If it is missing, check the log file and the troubleshooting section of README.md.'
