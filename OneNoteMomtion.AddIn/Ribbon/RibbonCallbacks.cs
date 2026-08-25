@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Office.Core;
 using OneNoteMomtion.AddIn.Ipc;
 
@@ -11,6 +12,8 @@ namespace OneNoteMomtion.AddIn
     {
         private const string LanguageSelectionCommand = "code.format";
         private const string PageReformatCommand = "page.reformat";
+        private const string NavigateRevealCommand = "nav.reveal";
+        private const string NavigateCollapseAllCommand = "nav.collapseAll";
         private const int DefaultTimeoutMilliseconds = 4000;
         private const int PageReformatTimeoutMilliseconds = 30000;
 
@@ -58,6 +61,12 @@ namespace OneNoteMomtion.AddIn
                     return;
                 }
 
+                if (command == NavigateRevealCommand || command == NavigateCollapseAllCommand)
+                {
+                    RunInBackground(command);
+                    return;
+                }
+
                 EngineResponse response = Send(command, null);
                 if (!response.Success)
                 {
@@ -71,6 +80,25 @@ namespace OneNoteMomtion.AddIn
             {
                 ShimLog.Error("Error handling ribbon button.", ex);
             }
+        }
+
+        private void RunInBackground(string command)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    EngineResponse response = Send(command, null);
+                    if (!response.Success)
+                    {
+                        ShimLog.Warn("Command \"" + command + "\" failed: " + response.Message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ShimLog.Error("Error handling ribbon button.", ex);
+                }
+            });
         }
 
         public string OnLanguageMenuContent(IRibbonControl control)

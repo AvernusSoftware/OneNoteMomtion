@@ -28,7 +28,7 @@ namespace OneNoteMomtion.AddIn
 
         private const string RibbonResourceName = "OneNoteMomtion.AddIn.Ribbon.Ribbon.xml";
 
-        private const int DebugBuildNumber = 55;
+        private const int DebugBuildNumber = 58;
 
         private EngineProcess? _engine;
 
