@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using OneNoteMomtion.Core.Highlighting;
 using OneNoteMomtion.Core.Highlighting.Detection;
 using OneNoteMomtion.Core.Highlighting.Providers;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Styles;
 using OneNoteMomtion.Core.Xml;
 
@@ -18,12 +19,14 @@ namespace OneNoteMomtion.Core.Reformat
         private readonly StyleCatalog _catalog;
         private readonly SyntaxHighlighterRegistry _registry;
         private readonly LanguageDetector _detector;
+        private readonly Localizer _texts;
 
         public CodeBlockReformatter(StyleCatalog catalog, SyntaxHighlighterRegistry registry, LanguageDetector? detector = null)
         {
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _detector = detector ?? new LanguageDetector();
+            _texts = Localizer.For(catalog.Language);
         }
 
         public int Apply(PageDocument page, IReadOnlyList<CodeBlockCandidate> candidates, CodeDetectionOptions options)
@@ -61,7 +64,7 @@ namespace OneNoteMomtion.Core.Reformat
             ISyntaxHighlightProvider provider = ChooseProvider(sourceCode, candidate, options);
 
             string blockId = candidate.ExistingBlockId ?? Guid.NewGuid().ToString("N");
-            CodeBlockRenderer renderer = new(HighlightTheme.FromCatalog(_catalog), _catalog.CodeBlock, () => blockId);
+            CodeBlockRenderer renderer = new(HighlightTheme.FromCatalog(_catalog), _catalog.CodeBlock, () => blockId, _texts);
             CodeBlockRenderResult replacement = renderer.CreateOutlineElements(page.One, sourceCode, provider);
 
             if (candidate.IsOwn && SameRendering(page, candidate.Remove, replacement.RootElements))

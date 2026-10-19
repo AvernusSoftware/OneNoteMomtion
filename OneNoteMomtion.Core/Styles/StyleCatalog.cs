@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using OneNoteMomtion.Core.Highlighting.Detection;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Text;
 
 namespace OneNoteMomtion.Core.Styles
@@ -9,6 +10,8 @@ namespace OneNoteMomtion.Core.Styles
     public sealed class StyleCatalog
     {
         public int Version { get; set; } = 1;
+
+        public string Language { get; set; } = UiLanguage.Auto;
 
         public Dictionary<string, StyleDefinition> Styles { get; set; } = new Dictionary<string, StyleDefinition>(StringComparer.OrdinalIgnoreCase);
 
@@ -44,6 +47,11 @@ namespace OneNoteMomtion.Core.Styles
 
         public void FillMissingWithDefaults()
         {
+            if (string.IsNullOrWhiteSpace(Language))
+            {
+                Language = UiLanguage.Auto;
+            }
+
             Styles = WithOrdinalIgnoreCase(Styles);
             HighlightTheme = WithOrdinalIgnoreCase(HighlightTheme);
 

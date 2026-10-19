@@ -2,6 +2,8 @@ namespace OneNoteMomtion.Core.Styles
 {
     public sealed class CodeBlockOptions
     {
+        public const string DefaultCopyButtonText = "Copy";
+
         public string Font { get; set; } = "Consolas";
 
         public double FontSize { get; set; } = 11.0;
@@ -24,7 +26,7 @@ namespace OneNoteMomtion.Core.Styles
 
         public bool ShowCopyButton { get; set; } = true;
 
-        public string CopyButtonText { get; set; } = "Copy";
+        public string CopyButtonText { get; set; } = DefaultCopyButtonText;
 
         public double HeaderFontSize { get; set; } = 9.0;
 

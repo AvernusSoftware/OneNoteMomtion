@@ -2,6 +2,7 @@
 using System.Xml.Linq;
 using NUnit.Framework;
 using OneNoteMomtion.Core.Highlighting;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Reformat;
 using OneNoteMomtion.Core.Styles;
 
@@ -58,13 +59,21 @@ namespace OneNoteMomtion.Core.Tests
         {
             ReformatCounters counters = new() { Headings = 2, CodeBlocks = 1 };
 
-            Assert.That(counters.Describe(), Is.EqualTo("Reformatted 2 headings, 1 code block."));
+            Assert.That(counters.Describe(Localizer.English), Is.EqualTo("Reformatted 2 headings, 1 code block."));
+        }
+
+        [Test]
+        public void ReformatCounters_InPolish_UsesThePluralFormThatFitsEachCount()
+        {
+            ReformatCounters counters = new() { Headings = 2, Paragraphs = 5, TextFixes = 1, BlankParagraphs = 22, CodeBlocks = 12 };
+
+            Assert.That(counters.Describe(new Localizer("pl")), Is.EqualTo("Przeformatowano: 2 nagłówki, 5 akapitów, 1 poprawka tekstu, 22 puste akapity, 12 bloków kodu."));
         }
 
         [Test]
         public void ReformatCounters_SaysSoWhenThereWasNothingToDo()
         {
-            Assert.That(new ReformatCounters().Describe(), Is.EqualTo("Nothing on this page needed reformatting."));
+            Assert.That(new ReformatCounters().Describe(Localizer.English), Is.EqualTo("Nothing on this page needed reformatting."));
         }
 
         [Test]

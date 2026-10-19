@@ -1,4 +1,5 @@
 ﻿using OneNoteMomtion.Core;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Server.OneNote;
 
 namespace OneNoteMomtion.Server.Commands
@@ -10,32 +11,27 @@ namespace OneNoteMomtion.Server.Commands
             string? pageId = session.GetCurrentPageId();
             if (pageId is null)
             {
-                return CommandResult.Failed("The current page could not be determined.");
+                return CommandResult.Failed(editor.Texts.Get(TextKeys.EngineCurrentPageUnknown));
             }
 
             string? pageXml = session.GetPageXml(pageId, PageInfo.Basic);
             if (string.IsNullOrEmpty(pageXml))
             {
-                return CommandResult.Failed("The current page could not be read.");
+                return CommandResult.Failed(editor.Texts.Get(TextKeys.EngineCurrentPageUnreadable));
             }
 
             CodeExtractResult extracted = editor.ExtractCodeByBlockId(pageXml!, blockId);
             if (!extracted.Success)
             {
-                return CommandResult.Failed(extracted.Message ?? "The code block could not be read.");
+                return CommandResult.Failed(extracted.Message ?? editor.Texts.Get(TextKeys.EngineCodeBlockUnreadable));
             }
 
-            if (!CodeClipboard.TrySet(extracted.Text!, out string? error))
+            if (!CodeClipboard.TrySet(extracted.Text!, editor.Texts, out string? error))
             {
                 return CommandResult.Failed(error!);
             }
 
-            return CommandResult.NothingToDo(DescribeCopied(extracted.LineCount));
-        }
-
-        private static string DescribeCopied(int lineCount)
-        {
-            return "Copied " + lineCount + (lineCount == 1 ? " line." : " lines.");
+            return CommandResult.NothingToDo(editor.Texts.Plural(TextKeys.EngineCodeCopiedLines, extracted.LineCount));
         }
     }
 }

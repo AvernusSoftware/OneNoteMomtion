@@ -7,4 +7,8 @@
     <Description>Domain logic for OneNoteMomtion: OneNote page XML manipulation, text transformations and syntax highlighting.</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Localization\*.json" LogicalName="OneNoteMomtion.Core.Localization.%(Filename)%(Extension)" WithCulture="false" />
+  </ItemGroup>
+
 </Project>

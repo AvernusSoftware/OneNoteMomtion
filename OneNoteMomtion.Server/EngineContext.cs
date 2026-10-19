@@ -32,7 +32,7 @@ namespace OneNoteMomtion.Server
             _oneNote = new OneNoteConnection();
 
             string contentRoot = Path.Combine(AppContext.BaseDirectory, FrontendFolderName);
-            _palette = new PaletteWindow(Execute, contentRoot);
+            _palette = new PaletteWindow(Execute, contentRoot, () => _services.Texts);
 
             _foreground = new ForegroundMonitor(options.HostProcessId);
 

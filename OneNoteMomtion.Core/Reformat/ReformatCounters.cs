@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Globalization;
+﻿using System;
+using System.Collections.Generic;
+using OneNoteMomtion.Core.Localization;
 
 namespace OneNoteMomtion.Core.Reformat
 {
@@ -17,28 +18,30 @@ namespace OneNoteMomtion.Core.Reformat
 
         public int Total => Headings + Paragraphs + TextFixes + BlankParagraphs + CodeBlocks;
 
-        public string Describe()
+        public string Describe(Localizer texts)
         {
+            ArgumentNullException.ThrowIfNull(texts);
+
             if (Total == 0)
             {
-                return "Nothing on this page needed reformatting.";
+                return texts.Get(TextKeys.EngineReformatNothing);
             }
 
             List<string> parts = [];
-            Add(parts, Headings, "heading", "headings");
-            Add(parts, Paragraphs, "paragraph", "paragraphs");
-            Add(parts, TextFixes, "text fix", "text fixes");
-            Add(parts, BlankParagraphs, "blank paragraph", "blank paragraphs");
-            Add(parts, CodeBlocks, "code block", "code blocks");
+            Add(parts, texts, Headings, TextKeys.EngineReformatHeadings);
+            Add(parts, texts, Paragraphs, TextKeys.EngineReformatParagraphs);
+            Add(parts, texts, TextFixes, TextKeys.EngineReformatTextFixes);
+            Add(parts, texts, BlankParagraphs, TextKeys.EngineReformatBlankParagraphs);
+            Add(parts, texts, CodeBlocks, TextKeys.EngineReformatCodeBlocks);
 
-            return "Reformatted " + string.Join(", ", parts) + ".";
+            return texts.Format(TextKeys.EngineReformatDone, ("parts", string.Join(", ", parts)));
         }
 
-        private static void Add(List<string> parts, int count, string singular, string plural)
+        private static void Add(List<string> parts, Localizer texts, int count, string key)
         {
             if (count > 0)
             {
-                parts.Add(count.ToString(CultureInfo.InvariantCulture) + " " + (count == 1 ? singular : plural));
+                parts.Add(texts.Plural(key, count));
             }
         }
     }

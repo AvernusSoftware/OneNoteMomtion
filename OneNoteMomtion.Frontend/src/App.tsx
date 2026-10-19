@@ -4,10 +4,12 @@ import FloatingPalette from './components/FloatingPalette'
 import LanguagePicker from './components/LanguagePicker'
 import StyleSettings from './components/StyleSettings'
 import SubmenuList from './components/SubmenuList'
-import { actionKey, caseActions } from './commands'
+import { actionKey, caseActions, localizeAction } from './commands'
 import type { PaletteAction } from './commands'
 import { useLanguages } from './hooks/useLanguages'
 import { invalidatePaletteConfig, usePaletteConfig } from './hooks/usePaletteConfig'
+import { invalidateTexts, useTexts } from './hooks/useTexts'
+import { currentTexts, t } from './i18n/texts'
 import { orderCaseActions, orderLanguages } from './paletteConfig'
 import { closePalette, isHosted, onViewChange, requestResize, sendCommand } from './bridge/onenoteBridge'
 
@@ -34,16 +36,17 @@ export default function App() {
   const [status, setStatus] = useState<Status | null>(null)
   const { languages } = useLanguages()
   const config = usePaletteConfig()
+  const texts = useTexts()
 
   const caseItems = useMemo(
     () =>
-      orderCaseActions(caseActions, config).map((action) => ({
+      orderCaseActions(caseActions.map((action) => localizeAction(action, texts)), config).map((action) => ({
         id: action.id,
         label: action.label,
         hint: action.hint,
         icon: action.icon,
       })),
-    [config],
+    [config, texts],
   )
 
   const visibleLanguageCount = useMemo(() => orderLanguages(languages, config).length, [languages, config])
@@ -58,6 +61,7 @@ export default function App() {
         setQuery('')
         setRestoreActiveId(null)
         invalidatePaletteConfig()
+        invalidateTexts()
       }),
     [],
   )
@@ -101,7 +105,7 @@ export default function App() {
       const response = await sendCommand(command, argument)
 
       if (!response.success) {
-        setStatus({ message: response.message ?? 'The command failed.', ok: false })
+        setStatus({ message: response.message ?? t(currentTexts(), 'palette.commandFailed'), ok: false })
         return
       }
 
@@ -130,7 +134,7 @@ export default function App() {
     <div className="flex h-full flex-col overflow-hidden rounded-[--radius-palette] border border-border-subtle bg-surface shadow-[0_12px_32px_rgba(15,15,15,0.18)]">
       {!isHosted && (
         <div className="bg-accent-soft px-3 py-1 text-center text-[11px] text-ink-muted">
-          Development mode — no connection to OneNote, commands are simulated.
+          {t(texts, 'palette.devBanner')}
         </div>
       )}
 
@@ -157,7 +161,7 @@ export default function App() {
 
         {view === 'case' && (
           <SubmenuList
-            title="Letter case"
+            title={t(texts, 'palette.case.title')}
             items={caseItems}
             onBack={() => setView('actions')}
             onPick={(commandId) => {
@@ -167,7 +171,7 @@ export default function App() {
             placeholder={
               caseItems.length === 0 && (
                 <p className="px-3 py-6 text-center text-[12px] text-ink-muted">
-                  Every entry is switched off in styles.json.
+                  {t(texts, 'palette.case.allDisabled')}
                 </p>
               )
             }

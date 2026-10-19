@@ -1,7 +1,9 @@
 ﻿import { useEffect, useState } from 'react'
 import { ArrowLeft, FolderOpen, RefreshCw, Save } from 'lucide-react'
 import { sendCommand } from '../bridge/onenoteBridge'
+import { t } from '../i18n/texts'
 import { invalidatePaletteConfig } from '../hooks/usePaletteConfig'
+import { invalidateTexts, useTexts } from '../hooks/useTexts'
 
 interface StyleSettingsProps {
   onBack: () => void
@@ -13,6 +15,7 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const texts = useTexts()
 
   useEffect(() => {
     void load()
@@ -36,7 +39,7 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
     try {
       JSON.parse(text)
     } catch (reason) {
-      onStatus(`Niepoprawny JSON: ${reason instanceof Error ? reason.message : String(reason)}`, false)
+      onStatus(t(texts, 'palette.settings.invalidJson', { error: reason instanceof Error ? reason.message : String(reason) }), false)
       return
     }
 
@@ -44,11 +47,12 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
 
     try {
       const response = await sendCommand('settings.save', text)
-      onStatus(response.message ?? (response.success ? 'Saved.' : 'Saving failed.'), response.success)
+      onStatus(response.message ?? t(texts, response.success ? 'palette.settings.saved' : 'palette.settings.saveFailed'), response.success)
 
       if (response.success) {
         setDirty(false)
         invalidatePaletteConfig()
+        invalidateTexts()
       }
     } catch (reason) {
       onStatus(reason instanceof Error ? reason.message : String(reason), false)
@@ -77,7 +81,7 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back"
+          aria-label={t(texts, 'palette.back')}
           className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-sunken"
         >
           <ArrowLeft className="size-4" aria-hidden />
@@ -90,8 +94,8 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
         <button
           type="button"
           onClick={() => void sendCommand('settings.openFolder')}
-          title="Open the configuration folder"
-          aria-label="Open the configuration folder"
+          title={t(texts, 'palette.settings.openFolder')}
+          aria-label={t(texts, 'palette.settings.openFolder')}
           className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-sunken"
         >
           <FolderOpen className="size-4" aria-hidden />
@@ -100,8 +104,8 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
         <button
           type="button"
           onClick={() => void load()}
-          title="Reload from disk"
-          aria-label="Reload from disk"
+          title={t(texts, 'palette.settings.reload')}
+          aria-label={t(texts, 'palette.settings.reload')}
           className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-sunken"
         >
           <RefreshCw className="size-4" aria-hidden />
@@ -109,7 +113,7 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
       </div>
 
       <textarea
-        value={loading ? 'Loading…' : text}
+        value={loading ? t(texts, 'palette.loading') : text}
         readOnly={loading}
         spellCheck={false}
         onChange={(event) => {
@@ -120,7 +124,7 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
       />
 
       <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-3 py-2">
-        <span className="mr-auto text-[11px] text-ink-muted">Ctrl+S saves</span>
+        <span className="mr-auto text-[11px] text-ink-muted">{t(texts, 'palette.settings.saveHint')}</span>
         <button
           type="button"
           disabled={saving || loading}
@@ -128,7 +132,7 @@ export default function StyleSettings({ onBack, onStatus }: StyleSettingsProps) 
           className="flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 text-[12px] font-medium text-white transition-opacity disabled:opacity-50"
         >
           <Save className="size-3.5" aria-hidden />
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t(texts, 'palette.settings.saving') : t(texts, 'palette.settings.save')}
         </button>
       </div>
     </div>

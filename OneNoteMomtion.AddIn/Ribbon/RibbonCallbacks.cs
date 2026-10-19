@@ -14,6 +14,8 @@ namespace OneNoteMomtion.AddIn
         private const string PageReformatCommand = "page.reformat";
         private const string NavigateRevealCommand = "nav.reveal";
         private const string NavigateCollapseAllCommand = "nav.collapseAll";
+        private const string RibbonTextsCommand = "texts.ribbon";
+        private const string RibbonTextPrefix = "ribbon.";
         private const int DefaultTimeoutMilliseconds = 4000;
         private const int PageReformatTimeoutMilliseconds = 30000;
 
@@ -22,15 +24,30 @@ namespace OneNoteMomtion.AddIn
         private IRibbonUI? _ribbon;
         private List<KeyValuePair<string, string>>? _languages;
         private string _selectedLanguageId = string.Empty;
+        private Dictionary<string, string>? _ribbonTexts;
+        private SettingsWatcher? _settingsWatcher;
 
         public void OnRibbonLoad(IRibbonUI ribbon)
         {
             _ribbon = ribbon;
             ShimLog.Info("Ribbon loaded.");
+
+            try
+            {
+                _settingsWatcher = new SettingsWatcher();
+                _settingsWatcher.Changed += (_, _) => RefreshRibbonTextsIfChanged();
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Warn("Failed to watch styles.json - a new interface language shows on the ribbon after OneNote restarts: " + ex.Message);
+            }
         }
 
         private void ReleaseRibbon()
         {
+            _settingsWatcher?.Dispose();
+            _settingsWatcher = null;
+
             if (_ribbon == null)
             {
                 return;
@@ -75,11 +92,28 @@ namespace OneNoteMomtion.AddIn
                 }
 
                 RefreshLanguageListIfStillEmpty();
+                RefreshRibbonTextsIfStillEmpty();
             }
             catch (Exception ex)
             {
                 ShimLog.Error("Error handling ribbon button.", ex);
             }
+        }
+
+        public string OnGetLabel(IRibbonControl control)
+        {
+            string id = control?.Id ?? string.Empty;
+            return RibbonText(id, "label") ?? id;
+        }
+
+        public string OnGetScreentip(IRibbonControl control)
+        {
+            return RibbonText(control?.Id ?? string.Empty, "screentip") ?? string.Empty;
+        }
+
+        public string OnGetSupertip(IRibbonControl control)
+        {
+            return RibbonText(control?.Id ?? string.Empty, "supertip") ?? string.Empty;
         }
 
         private void RunInBackground(string command)
@@ -198,6 +232,112 @@ namespace OneNoteMomtion.AddIn
 
             _languages = languages;
             return languages;
+        }
+
+        private string? RibbonText(string controlId, string kind)
+        {
+            try
+            {
+                _ribbonTexts ??= FetchRibbonTexts();
+                return _ribbonTexts.TryGetValue(RibbonTextPrefix + controlId + "." + kind, out string? text) ? text : null;
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Error("Failed to read the ribbon texts.", ex);
+                return null;
+            }
+        }
+
+        private Dictionary<string, string> FetchRibbonTexts()
+        {
+            Dictionary<string, string> texts = new(StringComparer.Ordinal);
+
+            EngineResponse response = Send(RibbonTextsCommand, null);
+            if (!response.Success)
+            {
+                ShimLog.Warn("The engine did not return the ribbon texts: " + response.Message);
+                return texts;
+            }
+
+            foreach (string field in response.Fields)
+            {
+                int separator = field.IndexOf('=');
+                if (separator > 0)
+                {
+                    texts[field.Substring(0, separator)] = field.Substring(separator + 1);
+                }
+            }
+
+            return texts;
+        }
+
+        private void RefreshRibbonTextsIfStillEmpty()
+        {
+            if (_ribbonTexts == null || _ribbonTexts.Count > 0)
+            {
+                return;
+            }
+
+            _ribbonTexts = null;
+            InvalidateRibbon();
+        }
+
+        private void RefreshRibbonTextsIfChanged()
+        {
+            try
+            {
+                Dictionary<string, string> current = FetchRibbonTexts();
+                Dictionary<string, string>? previous = _ribbonTexts;
+
+                if (current.Count == 0 || (previous != null && SameTexts(previous, current)))
+                {
+                    return;
+                }
+
+                ShimLog.Info("The interface texts changed - refreshing the ribbon.");
+                _ribbonTexts = current;
+                _languages = null;
+                InvalidateRibbon();
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Error("Failed to refresh the ribbon after styles.json changed.", ex);
+            }
+        }
+
+        private static bool SameTexts(Dictionary<string, string> left, Dictionary<string, string> right)
+        {
+            if (left.Count != right.Count)
+            {
+                return false;
+            }
+
+            foreach (KeyValuePair<string, string> pair in left)
+            {
+                if (!right.TryGetValue(pair.Key, out string? value) || value != pair.Value)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void InvalidateRibbon()
+        {
+            if (_ribbon == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _ribbon.Invalidate();
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Warn("Failed to invalidate the ribbon: " + ex.Message);
+            }
         }
 
         private static string ControlIdOf(string languageId)

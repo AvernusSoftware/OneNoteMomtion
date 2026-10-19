@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using NUnit.Framework;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Styles;
 
 namespace OneNoteMomtion.Core.Tests
@@ -52,6 +53,25 @@ namespace OneNoteMomtion.Core.Tests
                 Assert.That(reloaded.AutoMarkdownTyping, Is.False);
                 Assert.That(reloaded.AutoNormalAfterHeading, Is.False);
             }
+        }
+
+        [Test]
+        public void SaveAndLoad_RoundTripsTheInterfaceLanguage()
+        {
+            StyleCatalog original = StyleCatalog.CreateDefault();
+            original.Language = "pl";
+
+            StyleCatalogStore.Save(original, _path);
+
+            Assert.That(StyleCatalogStore.Load(_path).Language, Is.EqualTo("pl"));
+        }
+
+        [Test]
+        public void Load_FollowsWindowsWhenTheFileHasNoLanguage()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1 }");
+
+            Assert.That(StyleCatalogStore.Load(_path).Language, Is.EqualTo(UiLanguage.Auto));
         }
 
         [Test]

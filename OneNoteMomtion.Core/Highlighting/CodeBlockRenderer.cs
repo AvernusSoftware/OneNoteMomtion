@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Spelling;
 using OneNoteMomtion.Core.Styles;
 using OneNoteMomtion.Core.Xml;
@@ -16,12 +17,14 @@ namespace OneNoteMomtion.Core.Highlighting
         private readonly HighlightTheme _theme;
         private readonly CodeBlockOptions _options;
         private readonly Func<string> _blockIdFactory;
+        private readonly Localizer _texts;
 
-        public CodeBlockRenderer(HighlightTheme theme, CodeBlockOptions options, Func<string>? blockIdFactory = null)
+        public CodeBlockRenderer(HighlightTheme theme, CodeBlockOptions options, Func<string>? blockIdFactory = null, Localizer? texts = null)
         {
             _theme = theme ?? throw new ArgumentNullException(nameof(theme));
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _blockIdFactory = blockIdFactory ?? (() => Guid.NewGuid().ToString("N"));
+            _texts = texts ?? Localizer.English;
         }
 
         public string LineCss
@@ -102,7 +105,7 @@ namespace OneNoteMomtion.Core.Highlighting
 
             string? blockId = _options.ShowCopyButton ? _blockIdFactory() : null;
 
-            XElement root = new(one + "OE", CreateTable(one, lineElements, provider.DisplayName, blockId, provider.LanguageId));
+            XElement root = new(one + "OE", CreateTable(one, lineElements, _texts.LanguageName(provider), blockId, provider.LanguageId));
             return new CodeBlockRenderResult([root], lineElements);
         }
 
@@ -183,7 +186,7 @@ namespace OneNoteMomtion.Core.Highlighting
                 return language;
             }
 
-            string label = _options.CopyButtonText ?? string.Empty;
+            string label = _options.CopyButtonText == CodeBlockOptions.DefaultCopyButtonText ? _texts.Get(TextKeys.PageCopyButton) : _options.CopyButtonText ?? string.Empty;
             if (label.Length == 0)
             {
                 return language;

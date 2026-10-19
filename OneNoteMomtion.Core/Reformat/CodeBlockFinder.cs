@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using OneNoteMomtion.Core.Highlighting;
+using OneNoteMomtion.Core.Highlighting.Providers;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Styles;
 using OneNoteMomtion.Core.Xml;
 
@@ -233,11 +235,14 @@ namespace OneNoteMomtion.Core.Reformat
         private static string? DisplayNameOf(string headerHtml, CodeBlockOptions codeBlock)
         {
             string text = HtmlRunRewriter.ExtractPlainText(headerHtml);
-            string label = codeBlock.CopyButtonText ?? string.Empty;
 
-            if (label.Length > 0 && text.EndsWith(label, StringComparison.Ordinal))
+            foreach (string label in CopyButtonLabels(codeBlock))
             {
-                text = text[..^label.Length];
+                if (text.EndsWith(label, StringComparison.Ordinal))
+                {
+                    text = text[..^label.Length];
+                    break;
+                }
             }
 
             text = text.Trim();
@@ -259,7 +264,22 @@ namespace OneNoteMomtion.Core.Reformat
                 return byId.LanguageId;
             }
 
+            if (TextCatalog.EveryTranslationOf(TextKeys.PagePlainText).Contains(known.Trim(), StringComparer.OrdinalIgnoreCase))
+            {
+                return PlainTextHighlightProvider.Id;
+            }
+
             return registry.TryGetByDisplayName(known, out ISyntaxHighlightProvider? byName) ? byName.LanguageId : null;
+        }
+
+        private static IEnumerable<string> CopyButtonLabels(CodeBlockOptions codeBlock)
+        {
+            if (!string.IsNullOrEmpty(codeBlock.CopyButtonText) && codeBlock.CopyButtonText != CodeBlockOptions.DefaultCopyButtonText)
+            {
+                return [codeBlock.CopyButtonText];
+            }
+
+            return TextCatalog.EveryTranslationOf(TextKeys.PageCopyButton);
         }
     }
 }

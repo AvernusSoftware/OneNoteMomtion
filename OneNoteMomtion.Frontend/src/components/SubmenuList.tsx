@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { t } from '../i18n/texts'
 import { useListNavigation } from '../hooks/useListNavigation'
+import { useTexts } from '../hooks/useTexts'
 
 export interface SubmenuItem {
   id: string
@@ -20,6 +22,7 @@ interface SubmenuListProps {
 }
 
 export default function SubmenuList({ title, items, onPick, onBack, placeholder }: SubmenuListProps) {
+  const texts = useTexts()
   const { activeIndex, listRef, handleKeyDown, handleHover, handleMouseMove } = useListNavigation({
     count: items.length,
     onActivate: (index) => {
@@ -42,7 +45,7 @@ export default function SubmenuList({ title, items, onPick, onBack, placeholder 
           type="button"
           autoFocus
           onClick={onBack}
-          aria-label="Back"
+          aria-label={t(texts, 'palette.back')}
           className="rounded-md p-1 text-ink-muted transition-colors hover:bg-surface-sunken"
         >
           <ArrowLeft className="size-4" aria-hidden />

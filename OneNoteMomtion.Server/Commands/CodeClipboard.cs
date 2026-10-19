@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using OneNoteMomtion.Core.Localization;
 
 namespace OneNoteMomtion.Server.Commands
 {
@@ -9,13 +10,13 @@ namespace OneNoteMomtion.Server.Commands
 
         private const int RetryDelayMilliseconds = 100;
 
-        public static bool TrySet(string text, out string? error)
+        public static bool TrySet(string text, Localizer texts, out string? error)
         {
             error = null;
 
             if (string.IsNullOrEmpty(text))
             {
-                error = "There is nothing to copy.";
+                error = texts.Get(TextKeys.EngineNothingToCopy);
                 return false;
             }
 
@@ -28,7 +29,7 @@ namespace OneNoteMomtion.Server.Commands
             catch (Exception ex)
             {
                 EngineLog.Error("Failed to put the code on the clipboard.", ex);
-                error = "The clipboard could not be opened: " + ex.Message;
+                error = texts.Format(TextKeys.EngineClipboardUnavailable, ("error", ex.Message));
                 return false;
             }
         }
