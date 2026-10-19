@@ -38,7 +38,6 @@
         public const string SettingsOpenFolder = "settings.openFolder";
 
         public const string TextsPalette = "texts.palette";
-        public const string TextsRibbon = "texts.ribbon";
 
         public const string PaletteConfig = "palette.config";
         public const string PaletteShow = "palette.show";

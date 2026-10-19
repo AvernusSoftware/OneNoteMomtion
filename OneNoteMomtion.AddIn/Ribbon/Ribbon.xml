@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<!-- Labels and tips come from the engine (OneNoteMomtion.Core/Localization/*.json, keys "ribbon.<id>.label",
-     ".screentip", ".supertip"), so the interface language follows styles.json without reinstalling. The tab
+<!-- Labels and tips come from OneNoteMomtion.Core/Localization/*.json (keys "ribbon.<id>.label", ".screentip",
+     ".supertip"), embedded in the add-in, so the interface language follows styles.json without reinstalling. The tab
      install.ps1 puts on the ribbon references these groups by idQ, which is why their labels follow too. -->
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
   <ribbon>

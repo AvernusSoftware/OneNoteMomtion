@@ -32,6 +32,8 @@
        recznie przez AssemblyResolve, bo srodowisko uruchomieniowe szuka ich obok ONENOTE.EXE. -->
   <ItemGroup>
     <EmbeddedResource Include="Ribbon\Ribbon.xml" />
+    <!-- Te same pliki jezykowe co w silniku: etykiety wstazki nie moga czekac na start silnika. -->
+    <EmbeddedResource Include="..\OneNoteMomtion.Core\Localization\*.json" LogicalName="OneNoteMomtion.AddIn.Localization.%(Filename)%(Extension)" WithCulture="false" />
   </ItemGroup>
 
   <!-- Interfejsy hosta bierzemy z gotowych zestawow wspolpracy Microsoftu zamiast deklarowac je recznie.

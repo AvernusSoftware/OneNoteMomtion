@@ -21,12 +21,12 @@ namespace OneNoteMomtion.Core.Reformat
         private readonly LanguageDetector _detector;
         private readonly Localizer _texts;
 
-        public CodeBlockReformatter(StyleCatalog catalog, SyntaxHighlighterRegistry registry, LanguageDetector? detector = null)
+        public CodeBlockReformatter(StyleCatalog catalog, SyntaxHighlighterRegistry registry, Localizer texts, LanguageDetector? detector = null)
         {
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _detector = detector ?? new LanguageDetector();
-            _texts = Localizer.For(catalog.Language);
+            _texts = texts ?? throw new ArgumentNullException(nameof(texts));
         }
 
         public int Apply(PageDocument page, IReadOnlyList<CodeBlockCandidate> candidates, CodeDetectionOptions options)

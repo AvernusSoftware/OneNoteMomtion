@@ -75,6 +75,36 @@ namespace OneNoteMomtion.Core.Tests
         }
 
         [Test]
+        public void Load_LetsTheCopyButtonOfAnOlderFileFollowTheInterfaceLanguage()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1, \"codeBlock\": { \"copyButtonText\": \"Copy\" } }");
+
+            StyleCatalog catalog = StyleCatalogStore.Load(_path);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(catalog.CodeBlock.CopyButtonText, Is.Null);
+                Assert.That(catalog.Version, Is.EqualTo(StyleCatalog.CurrentVersion));
+            }
+        }
+
+        [Test]
+        public void Load_KeepsCopyChosenInACurrentFile()
+        {
+            File.WriteAllText(_path, "{ \"version\": 2, \"codeBlock\": { \"copyButtonText\": \"Copy\" } }");
+
+            Assert.That(StyleCatalogStore.Load(_path).CodeBlock.CopyButtonText, Is.EqualTo("Copy"));
+        }
+
+        [Test]
+        public void Load_KeepsAnOlderFilesOwnButtonText()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1, \"codeBlock\": { \"copyButtonText\": \"Kopiuj kod\" } }");
+
+            Assert.That(StyleCatalogStore.Load(_path).CodeBlock.CopyButtonText, Is.EqualTo("Kopiuj kod"));
+        }
+
+        [Test]
         public void Load_CreatesFileWithDefaultsOnFirstRun()
         {
             Assert.That(File.Exists(_path), Is.False);

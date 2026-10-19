@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using OneNoteMomtion.Core.Highlighting;
 using OneNoteMomtion.Core.Highlighting.Providers;
@@ -16,8 +17,8 @@ namespace OneNoteMomtion.Core.Localization
         {
             ArgumentNullException.ThrowIfNull(language);
 
-            Language = language;
-            _texts = TextCatalog.TextsOf(language);
+            Language = TextCatalog.Available.FirstOrDefault(available => string.Equals(available, language, StringComparison.OrdinalIgnoreCase)) ?? UiLanguage.English;
+            _texts = TextCatalog.TextsOf(Language);
             _fallback = TextCatalog.TextsOf(UiLanguage.English);
         }
 

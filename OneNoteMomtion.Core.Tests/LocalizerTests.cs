@@ -20,6 +20,8 @@ namespace OneNoteMomtion.Core.Tests
         [TestCase(" PL ", "en-US", ExpectedResult = "pl")]
         [TestCase("en", "pl-PL", ExpectedResult = "en")]
         [TestCase("klingon", "pl-PL", ExpectedResult = "en")]
+        [TestCase("pl-PL", "en-US", ExpectedResult = "pl")]
+        [TestCase("PL_pl", "en-US", ExpectedResult = "pl")]
         public string Resolve_PicksTheLanguageOfTheSettingOrOfWindows(string? setting, string uiCulture)
         {
             return UiLanguage.Resolve(setting, new CultureInfo(uiCulture), Available);
@@ -65,6 +67,18 @@ namespace OneNoteMomtion.Core.Tests
         }
 
         [Test]
+        public void ALanguageCodeInAnyCaseGetsThePluralRuleOfItsLanguage()
+        {
+            Localizer polish = new("PL");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(polish.Language, Is.EqualTo("pl"));
+                Assert.That(polish.Plural(TextKeys.EngineCodeCopiedLines, 3), Is.EqualTo("Skopiowano 3 wiersze."));
+            }
+        }
+
+        [Test]
         public void Format_ReplacesEveryNamedValue()
         {
             string text = new Localizer("pl").Format(TextKeys.EngineTreeWritten, ("count", "7"), ("path", @"C:\uia-tree.txt"));
@@ -81,7 +95,13 @@ namespace OneNoteMomtion.Core.Tests
         [Test]
         public void ALanguageWithoutAFileGetsEnglish()
         {
-            Assert.That(new Localizer("xx").Get(TextKeys.EngineCodeCopied), Is.EqualTo("The code was copied."));
+            Localizer unknown = new("xx");
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(unknown.Language, Is.EqualTo("en"));
+                Assert.That(unknown.Get(TextKeys.EngineCodeCopied), Is.EqualTo("The code was copied."));
+            }
         }
 
         [Test]

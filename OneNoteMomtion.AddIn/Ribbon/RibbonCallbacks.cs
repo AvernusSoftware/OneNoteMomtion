@@ -14,7 +14,6 @@ namespace OneNoteMomtion.AddIn
         private const string PageReformatCommand = "page.reformat";
         private const string NavigateRevealCommand = "nav.reveal";
         private const string NavigateCollapseAllCommand = "nav.collapseAll";
-        private const string RibbonTextsCommand = "texts.ribbon";
         private const string RibbonTextPrefix = "ribbon.";
         private const int DefaultTimeoutMilliseconds = 4000;
         private const int PageReformatTimeoutMilliseconds = 30000;
@@ -22,15 +21,27 @@ namespace OneNoteMomtion.AddIn
         private const string LanguageMenuControlId = "languageMenu";
 
         private IRibbonUI? _ribbon;
-        private List<KeyValuePair<string, string>>? _languages;
+        // Both are swapped whole by the settings watcher's thread while the ribbon callbacks read them, hence
+        // volatile references to objects nobody changes after publishing them.
+        private volatile List<KeyValuePair<string, string>>? _languages;
+        private volatile IReadOnlyDictionary<string, string> _ribbonTexts = new Dictionary<string, string>();
+        private volatile bool _ribbonRefreshPending;
         private string _selectedLanguageId = string.Empty;
-        private Dictionary<string, string>? _ribbonTexts;
         private SettingsWatcher? _settingsWatcher;
 
         public void OnRibbonLoad(IRibbonUI ribbon)
         {
             _ribbon = ribbon;
             ShimLog.Info("Ribbon loaded.");
+
+            try
+            {
+                _ribbonTexts = RibbonTexts.Load();
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Error("Failed to load the ribbon texts.", ex);
+            }
 
             try
             {
@@ -92,7 +103,7 @@ namespace OneNoteMomtion.AddIn
                 }
 
                 RefreshLanguageListIfStillEmpty();
-                RefreshRibbonTextsIfStillEmpty();
+                RefreshRibbonIfPending();
             }
             catch (Exception ex)
             {
@@ -187,6 +198,7 @@ namespace OneNoteMomtion.AddIn
                 }
 
                 InvalidateLanguageMenu();
+                RefreshRibbonIfPending();
             }
             catch (Exception ex)
             {
@@ -196,9 +208,10 @@ namespace OneNoteMomtion.AddIn
 
         private List<KeyValuePair<string, string>> Languages()
         {
-            if (_languages != null)
+            List<KeyValuePair<string, string>>? cached = _languages;
+            if (cached != null)
             {
-                return _languages;
+                return cached;
             }
 
             EngineResponse response = Send("languages.list", null);
@@ -236,68 +249,29 @@ namespace OneNoteMomtion.AddIn
 
         private string? RibbonText(string controlId, string kind)
         {
-            try
-            {
-                _ribbonTexts ??= FetchRibbonTexts();
-                return _ribbonTexts.TryGetValue(RibbonTextPrefix + controlId + "." + kind, out string? text) ? text : null;
-            }
-            catch (Exception ex)
-            {
-                ShimLog.Error("Failed to read the ribbon texts.", ex);
-                return null;
-            }
-        }
-
-        private Dictionary<string, string> FetchRibbonTexts()
-        {
-            Dictionary<string, string> texts = new(StringComparer.Ordinal);
-
-            EngineResponse response = Send(RibbonTextsCommand, null);
-            if (!response.Success)
-            {
-                ShimLog.Warn("The engine did not return the ribbon texts: " + response.Message);
-                return texts;
-            }
-
-            foreach (string field in response.Fields)
-            {
-                int separator = field.IndexOf('=');
-                if (separator > 0)
-                {
-                    texts[field.Substring(0, separator)] = field.Substring(separator + 1);
-                }
-            }
-
-            return texts;
-        }
-
-        private void RefreshRibbonTextsIfStillEmpty()
-        {
-            if (_ribbonTexts == null || _ribbonTexts.Count > 0)
-            {
-                return;
-            }
-
-            _ribbonTexts = null;
-            InvalidateRibbon();
+            return _ribbonTexts.TryGetValue(RibbonTextPrefix + controlId + "." + kind, out string? text) ? text : null;
         }
 
         private void RefreshRibbonTextsIfChanged()
         {
             try
             {
-                Dictionary<string, string> current = FetchRibbonTexts();
-                Dictionary<string, string>? previous = _ribbonTexts;
-
-                if (current.Count == 0 || (previous != null && SameTexts(previous, current)))
+                if (_ribbon == null)
                 {
                     return;
                 }
 
-                ShimLog.Info("The interface texts changed - refreshing the ribbon.");
+                IReadOnlyDictionary<string, string> current = RibbonTexts.Load();
+                if (SameTexts(_ribbonTexts, current))
+                {
+                    return;
+                }
+
+                ShimLog.Info("The interface language changed - refreshing the ribbon.");
                 _ribbonTexts = current;
                 _languages = null;
-                InvalidateRibbon();
+                _ribbonRefreshPending = true;
+                RefreshRibbonIfPending();
             }
             catch (Exception ex)
             {
@@ -305,7 +279,7 @@ namespace OneNoteMomtion.AddIn
             }
         }
 
-        private static bool SameTexts(Dictionary<string, string> left, Dictionary<string, string> right)
+        private static bool SameTexts(IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right)
         {
             if (left.Count != right.Count)
             {
@@ -323,9 +297,11 @@ namespace OneNoteMomtion.AddIn
             return true;
         }
 
-        private void InvalidateRibbon()
+        // Called from the settings watcher's thread and again from the next ribbon callback, which runs on the
+        // thread Office calls the add-in on - so a refresh the first call could not deliver is not lost.
+        private void RefreshRibbonIfPending()
         {
-            if (_ribbon == null)
+            if (!_ribbonRefreshPending || _ribbon == null)
             {
                 return;
             }
@@ -333,10 +309,11 @@ namespace OneNoteMomtion.AddIn
             try
             {
                 _ribbon.Invalidate();
+                _ribbonRefreshPending = false;
             }
             catch (Exception ex)
             {
-                ShimLog.Warn("Failed to invalidate the ribbon: " + ex.Message);
+                ShimLog.Warn("Failed to invalidate the ribbon, retrying on the next ribbon command: " + ex.Message);
             }
         }
 

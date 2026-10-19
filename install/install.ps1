@@ -439,6 +439,7 @@ function Install-DefaultRibbonTab {
         $group = $document.CreateElement('mso', 'group', $MsoNamespace)
         $group.SetAttribute('idQ', "onm:$groupId")
         $group.SetAttribute('visible', 'true')
+        $group.SetAttribute('autoScale', 'true')
         $tab.AppendChild($group) | Out-Null
     }
 

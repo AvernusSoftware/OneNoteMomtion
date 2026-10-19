@@ -186,7 +186,7 @@ namespace OneNoteMomtion.Core.Highlighting
                 return language;
             }
 
-            string label = _options.CopyButtonText == CodeBlockOptions.DefaultCopyButtonText ? _texts.Get(TextKeys.PageCopyButton) : _options.CopyButtonText ?? string.Empty;
+            string label = _options.CopyButtonText ?? _texts.Get(TextKeys.PageCopyButton);
             if (label.Length == 0)
             {
                 return language;

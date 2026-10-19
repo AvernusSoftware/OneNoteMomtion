@@ -20,7 +20,7 @@ namespace OneNoteMomtion.AddIn
 
         public SettingsWatcher()
         {
-            string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), FolderName);
+            string folder = Path.GetDirectoryName(SettingsPath)!;
             Directory.CreateDirectory(folder);
 
             _quietPeriod = new Timer(_ => Changed?.Invoke(this, EventArgs.Empty), null, Timeout.Infinite, Timeout.Infinite);
@@ -35,6 +35,8 @@ namespace OneNoteMomtion.AddIn
             _watcher.Renamed += (_, _) => Restart();
             _watcher.EnableRaisingEvents = true;
         }
+
+        public static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), FolderName, FileName);
 
         public event EventHandler? Changed;
 

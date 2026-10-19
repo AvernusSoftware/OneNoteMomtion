@@ -108,7 +108,7 @@ namespace OneNoteMomtion.Core
                 return UnreadablePageResult();
             }
 
-            PageReformatter reformatter = new(_catalog, _registry);
+            PageReformatter reformatter = new(_catalog, _registry, _texts);
             ReformatCounters counters = reformatter.Apply(page, options ?? ReformatOptions.FromCatalog(_catalog));
 
             if (counters.Total == 0)

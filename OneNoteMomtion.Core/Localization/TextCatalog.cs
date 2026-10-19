@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace OneNoteMomtion.Core.Localization
         private const string ResourceSuffix = ".json";
 
         private static readonly Lazy<Dictionary<string, Dictionary<string, string>>> Languages = new(Load);
+        private static readonly ConcurrentDictionary<string, IReadOnlyList<string>> Translations = new(StringComparer.Ordinal);
 
         public static IReadOnlyCollection<string> Available => Languages.Value.Keys;
 
@@ -28,7 +30,7 @@ namespace OneNoteMomtion.Core.Localization
 
         public static IReadOnlyList<string> EveryTranslationOf(string key)
         {
-            return [.. Languages.Value.Values.Select(texts => texts.TryGetValue(key, out string? text) ? text : null).OfType<string>().Where(text => text.Length > 0).Distinct()];
+            return Translations.GetOrAdd(key, _ => [.. Languages.Value.Values.Select(texts => texts.TryGetValue(key, out string? text) ? text : null).OfType<string>().Where(text => text.Length > 0).Distinct()]);
         }
 
         private static Dictionary<string, Dictionary<string, string>> Load()

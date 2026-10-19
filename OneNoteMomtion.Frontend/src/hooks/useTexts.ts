@@ -6,6 +6,10 @@ import type { UiTexts } from '../i18n/texts'
 let loaded = false
 let inFlight: Promise<UiTexts> | null = null
 
+// Bumped by every invalidation, so that an answer to an older request - say, one sent before the user saved a
+// new language - cannot overwrite the texts of a newer one when it happens to arrive later.
+let generation = 0
+
 const listeners = new Set<(texts: UiTexts) => void>()
 
 function loadTexts(): Promise<UiTexts> {
@@ -14,8 +18,14 @@ function loadTexts(): Promise<UiTexts> {
   }
 
   if (inFlight === null) {
-    inFlight = fetchTexts()
+    const requested = generation
+
+    const request: Promise<UiTexts> = fetchTexts()
       .then((texts) => {
+        if (requested !== generation) {
+          return currentTexts()
+        }
+
         setCurrentTexts(texts)
         document.documentElement.lang = texts.language
         loaded = true
@@ -24,15 +34,21 @@ function loadTexts(): Promise<UiTexts> {
         return texts
       })
       .catch((reason: unknown) => {
-        inFlight = null
+        if (inFlight === request) {
+          inFlight = null
+        }
+
         throw reason
       })
+
+    inFlight = request
   }
 
   return inFlight
 }
 
 export function invalidateTexts(): void {
+  generation++
   loaded = false
   inFlight = null
 

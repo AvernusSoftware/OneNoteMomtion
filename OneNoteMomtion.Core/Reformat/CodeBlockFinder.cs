@@ -272,14 +272,13 @@ namespace OneNoteMomtion.Core.Reformat
             return registry.TryGetByDisplayName(known, out ISyntaxHighlightProvider? byName) ? byName.LanguageId : null;
         }
 
+        // The user's own button text first, then the default one in every language - a block keeps whichever
+        // text it was rendered with after the setting or the interface language changes.
         private static IEnumerable<string> CopyButtonLabels(CodeBlockOptions codeBlock)
         {
-            if (!string.IsNullOrEmpty(codeBlock.CopyButtonText) && codeBlock.CopyButtonText != CodeBlockOptions.DefaultCopyButtonText)
-            {
-                return [codeBlock.CopyButtonText];
-            }
+            IReadOnlyList<string> defaults = TextCatalog.EveryTranslationOf(TextKeys.PageCopyButton);
 
-            return TextCatalog.EveryTranslationOf(TextKeys.PageCopyButton);
+            return string.IsNullOrEmpty(codeBlock.CopyButtonText) ? defaults : [codeBlock.CopyButtonText, .. defaults];
         }
     }
 }

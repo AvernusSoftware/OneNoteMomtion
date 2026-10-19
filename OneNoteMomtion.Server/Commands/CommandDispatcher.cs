@@ -128,9 +128,6 @@ namespace OneNoteMomtion.Server.Commands
                 case CommandIds.TextsPalette:
                     return CommandResult.Payload(new TextsPayload(_services.Texts.Language, _services.Texts.WithPrefix(TextKeys.PalettePrefix)));
 
-                case CommandIds.TextsRibbon:
-                    return CommandResult.Payload(RibbonTexts());
-
                 case CommandIds.PaletteShow:
                     _palette.Show("actions");
                     return CommandResult.NothingToDo();
@@ -248,18 +245,6 @@ namespace OneNoteMomtion.Server.Commands
             foreach (ISyntaxHighlightProvider provider in _services.Registry.Selectable())
             {
                 entries.Add(provider.LanguageId + "=" + _services.Texts.LanguageName(provider));
-            }
-
-            return entries;
-        }
-
-        private IReadOnlyList<string> RibbonTexts()
-        {
-            List<string> entries = [];
-
-            foreach (KeyValuePair<string, string> pair in _services.Texts.WithPrefix(TextKeys.RibbonPrefix))
-            {
-                entries.Add(pair.Key + "=" + pair.Value);
             }
 
             return entries;

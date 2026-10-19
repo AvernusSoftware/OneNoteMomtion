@@ -18,7 +18,7 @@ namespace OneNoteMomtion.Core.Tests
             StyleCatalog catalog = StyleCatalog.CreateDefault();
             catalog.Language = language;
             catalog.CodeBlock.ShowCopyButton = showCopyButton;
-            catalog.CodeBlock.CopyButtonText = copyButtonText ?? CodeBlockOptions.DefaultCopyButtonText;
+            catalog.CodeBlock.CopyButtonText = copyButtonText;
 
             return new PageEditor(catalog, SyntaxHighlighterRegistry.CreateDefault());
         }
@@ -55,6 +55,36 @@ namespace OneNoteMomtion.Core.Tests
             PageEditResult result = CreateEditor("pl", copyButtonText: "Do schowka").FormatCode(PageXml.Page(PageXml.Oe("int a;")), "csharp");
 
             Assert.That(HeaderText(result.Xml!), Does.EndWith("Do schowka"));
+        }
+
+        [Test]
+        public void FormatCode_ShowsTheEnglishButtonTextInEnglish()
+        {
+            PageEditResult result = CreateEditor("en").FormatCode(PageXml.Page(PageXml.Oe("int a;")), "csharp");
+
+            Assert.That(HeaderText(result.Xml!), Does.EndWith("Copy"));
+        }
+
+        [Test]
+        public void FormatCode_KeepsCopyWhenTheUserChoseItInAnotherLanguage()
+        {
+            PageEditResult result = CreateEditor("pl", copyButtonText: "Copy").FormatCode(PageXml.Page(PageXml.Oe("int a;")), "csharp");
+
+            Assert.That(HeaderText(result.Xml!), Does.EndWith("Copy"));
+        }
+
+        [Test]
+        public void ReformatPage_RecognisesABlockWithTheDefaultButtonAfterTheUserChoseTheirOwn()
+        {
+            // An older copy link carries no language, so the block is recognised by its header text - which still
+            // ends with the default "Kopiuj" after the user switched to a button text of their own.
+            string polish = CreateEditor("pl").FormatCode(PageXml.Page(PageXml.Oe("using System;"), PageXml.Oe("public class Program"), PageXml.Oe("{"), PageXml.Oe("    private static void Main() { }"), PageXml.Oe("}")), PlainTextHighlightProvider.Id).Xml!;
+            string withoutLanguageInLink = polish.Replace("&amp;lang=" + PlainTextHighlightProvider.Id, string.Empty).Replace("&lang=" + PlainTextHighlightProvider.Id, string.Empty);
+            Assume.That(withoutLanguageInLink, Is.Not.EqualTo(polish));
+
+            PageEditResult reformatted = CreateEditor("pl", copyButtonText: "Do schowka").ReformatPage(withoutLanguageInLink);
+
+            Assert.That(HeaderText(reformatted.Xml!), Does.StartWith("Zwykły tekst"));
         }
 
         [Test]
