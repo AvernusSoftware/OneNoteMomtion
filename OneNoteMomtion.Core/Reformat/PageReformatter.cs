@@ -4,6 +4,7 @@ using System.Linq;
 using System.Xml.Linq;
 using OneNoteMomtion.Core.Highlighting;
 using OneNoteMomtion.Core.Highlighting.Detection;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Styles;
 using OneNoteMomtion.Core.Xml;
 
@@ -14,12 +15,14 @@ namespace OneNoteMomtion.Core.Reformat
         private readonly StyleCatalog _catalog;
         private readonly SyntaxHighlighterRegistry _registry;
         private readonly LanguageDetector _detector;
+        private readonly Localizer _texts;
 
-        public PageReformatter(StyleCatalog catalog, SyntaxHighlighterRegistry registry, LanguageDetector? detector = null)
+        public PageReformatter(StyleCatalog catalog, SyntaxHighlighterRegistry registry, Localizer texts, LanguageDetector? detector = null)
         {
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
             _detector = detector ?? new LanguageDetector();
+            _texts = texts ?? throw new ArgumentNullException(nameof(texts));
         }
 
         public ReformatCounters Apply(PageDocument page, ReformatOptions options)
@@ -56,7 +59,7 @@ namespace OneNoteMomtion.Core.Reformat
 
             if (codeBlocks.Count > 0)
             {
-                CodeBlockReformatter reformatter = new(_catalog, _registry, _detector);
+                CodeBlockReformatter reformatter = new(_catalog, _registry, _texts, _detector);
                 counters.CodeBlocks = reformatter.Apply(page, codeBlocks, options.CodeDetection);
             }
 

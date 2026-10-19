@@ -2,6 +2,7 @@
 using System.IO;
 using OneNoteMomtion.Core;
 using OneNoteMomtion.Core.Highlighting;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Reformat;
 using OneNoteMomtion.Core.Styles;
 using OneNoteMomtion.Server.OneNote;
@@ -61,6 +62,8 @@ namespace OneNoteMomtion.Server.Commands
                 }
             }
         }
+
+        public Localizer Texts => Editor.Texts;
 
         public ReformatOptions ReformatOptions
         {

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 using OneNoteMomtion.Core.Highlighting;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Markdown;
 using OneNoteMomtion.Core.Reformat;
 using OneNoteMomtion.Core.Spelling;
@@ -17,14 +18,18 @@ namespace OneNoteMomtion.Core
     {
         private readonly StyleCatalog _catalog;
         private readonly SyntaxHighlighterRegistry _registry;
+        private readonly Localizer _texts;
 
         public PageEditor(StyleCatalog catalog, SyntaxHighlighterRegistry registry)
         {
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
             _registry = registry ?? throw new ArgumentNullException(nameof(registry));
+            _texts = Localizer.For(catalog.Language);
         }
 
         public StyleCatalog Catalog => _catalog;
+
+        public Localizer Texts => _texts;
 
         public SyntaxHighlighterRegistry Registry => _registry;
 
@@ -35,7 +40,7 @@ namespace OneNoteMomtion.Core
 
             if (!restoreBuiltInNormal && style == null)
             {
-                return PageEditResult.NoChange("Style \"" + styleName + "\" was not found in styles.json.");
+                return PageEditResult.NoChange(_texts.Format(TextKeys.EngineStyleNotFound, ("style", styleName)));
             }
 
             PageDocument? page = ParsePage(pageXml);
@@ -48,7 +53,7 @@ namespace OneNoteMomtion.Core
 
             int changed = style == null ? OeStyleWriter.ApplyBuiltInNormalToSelection(page, _catalog) : OeStyleWriter.ApplyToSelection(page, style);
 
-            return ResultOfChange(page, changed, "Nothing to format - select some text or put the caret in a paragraph.");
+            return ResultOfChange(page, changed, _texts.Get(TextKeys.EngineNothingToFormat));
         }
 
         public PageEditResult ApplyTextCase(string pageXml, TextCaseMode mode)
@@ -78,7 +83,7 @@ namespace OneNoteMomtion.Core
                 }
             }
 
-            return ResultOfChange(page, changed, "Select the text whose letter case you want to change.");
+            return ResultOfChange(page, changed, _texts.Get(TextKeys.EngineSelectTextForCase));
         }
 
         public PageEditResult ApplyMarkdownShortcuts(string pageXml, bool selectionOnly = true)
@@ -92,7 +97,7 @@ namespace OneNoteMomtion.Core
             MarkdownShortcutApplier applier = new(_catalog);
             int changed = applier.Apply(page, selectionOnly);
 
-            return ResultOfChange(page, changed, "Found no paragraph starting with \"# \", \"## \" or \"### \".");
+            return ResultOfChange(page, changed, _texts.Get(TextKeys.EngineNoMarkdownParagraph));
         }
 
         public PageEditResult ReformatPage(string pageXml, ReformatOptions? options = null)
@@ -103,15 +108,15 @@ namespace OneNoteMomtion.Core
                 return UnreadablePageResult();
             }
 
-            PageReformatter reformatter = new(_catalog, _registry);
+            PageReformatter reformatter = new(_catalog, _registry, _texts);
             ReformatCounters counters = reformatter.Apply(page, options ?? ReformatOptions.FromCatalog(_catalog));
 
             if (counters.Total == 0)
             {
-                return PageEditResult.NoChange(counters.Describe());
+                return PageEditResult.NoChange(counters.Describe(_texts));
             }
 
-            return PageEditResult.Updated(SaveXml(page), counters.Total, counters.Describe());
+            return PageEditResult.Updated(SaveXml(page), counters.Total, counters.Describe(_texts));
         }
 
         public PageEditResult ApplyMarkdownAtCaret(string pageXml)
@@ -125,13 +130,13 @@ namespace OneNoteMomtion.Core
             XElement? outlineElement = page.ActiveOutlineElement();
             if (outlineElement == null)
             {
-                return PageEditResult.NoChange("The caret is not inside a single paragraph.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineCaretNotInParagraph));
             }
 
             MarkdownShortcutApplier applier = new(_catalog);
             if (!applier.ApplyToOutlineElement(page, outlineElement))
             {
-                return PageEditResult.NoChange("The paragraph does not start with \"# \", \"## \" or \"### \".");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineParagraphNotMarkdown));
             }
 
             CaretWriter.PlaceAtStartOf(page, outlineElement);
@@ -150,24 +155,24 @@ namespace OneNoteMomtion.Core
             XElement? outlineElement = page.ActiveOutlineElement();
             if (outlineElement == null)
             {
-                return PageEditResult.NoChange("The caret is not inside a single paragraph.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineCaretNotInParagraph));
             }
 
             if (!OeStyleReader.IsHeading(page, outlineElement, _catalog))
             {
-                return PageEditResult.NoChange("The paragraph with the caret has no heading style.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineParagraphNotHeading));
             }
 
             string? caretObjectId = (string?)outlineElement.Attribute("objectID");
 
             if (!OeStyleReader.IsEmpty(page, outlineElement) && !CaretMovedBetweenLooks(previousCaretObjectId, caretObjectId))
             {
-                return PageEditResult.NoChange("The paragraph with the caret was not created by this Enter.", caretObjectId: caretObjectId);
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineParagraphNotFromEnter), caretObjectId: caretObjectId);
             }
 
             if (!OeStyleWriter.ApplyBuiltInNormal(page, outlineElement, _catalog))
             {
-                return PageEditResult.NoChange("The paragraph already has the normal text style.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineParagraphAlreadyNormal));
             }
 
             CaretWriter.PlaceAtStartOf(page, outlineElement);
@@ -190,18 +195,18 @@ namespace OneNoteMomtion.Core
 
             if (page.SelectedTextRuns().Count == 0)
             {
-                return PageEditResult.NoChange("Select the text whose spell checking you want to change.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineSelectTextForSpelling));
             }
 
             int changed = enabled ? SpellCheckDisabler.Enable(page) : SpellCheckDisabler.Disable(page);
-            return changed > 0 ? PageEditResult.Updated(SaveXml(page), changed, nudgeCaret: true) : PageEditResult.NoChange("Spell checking for the selection is already in that state.");
+            return changed > 0 ? PageEditResult.Updated(SaveXml(page), changed, nudgeCaret: true) : PageEditResult.NoChange(_texts.Get(TextKeys.EngineSpellingUnchanged));
         }
 
         public PageEditResult FormatCode(string pageXml, string languageId)
         {
             if (!_registry.TryGet(languageId, out ISyntaxHighlightProvider? provider))
             {
-                return PageEditResult.NoChange("Unknown language: \"" + languageId + "\".");
+                return PageEditResult.NoChange(_texts.Format(TextKeys.EngineUnknownLanguage, ("language", languageId)));
             }
 
             PageDocument? page = ParsePage(pageXml);
@@ -213,7 +218,7 @@ namespace OneNoteMomtion.Core
             List<XElement> selected = [.. page.SelectedOutlineElements()];
             if (selected.Count == 0)
             {
-                return PageEditResult.NoChange("Select the code you want formatted.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineSelectCode));
             }
 
             XElement? codeBlock = FindEnclosingCodeBlock(page, selected[0]);
@@ -237,16 +242,16 @@ namespace OneNoteMomtion.Core
 
             if (anchor.Parent == null)
             {
-                return PageEditResult.NoChange("The selection cannot be formatted at this place on the page.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineCannotFormatHere));
             }
 
             string sourceCode = ExtractSourceCode(page, sourceElements);
             if (string.IsNullOrWhiteSpace(sourceCode))
             {
-                return PageEditResult.NoChange("The selection holds no text.");
+                return PageEditResult.NoChange(_texts.Get(TextKeys.EngineSelectionEmpty));
             }
 
-            CodeBlockRenderer renderer = new(HighlightTheme.FromCatalog(_catalog), _catalog.CodeBlock);
+            CodeBlockRenderer renderer = new(HighlightTheme.FromCatalog(_catalog), _catalog.CodeBlock, texts: _texts);
             CodeBlockRenderResult replacement = renderer.CreateOutlineElements(page.One, sourceCode, provider);
 
             foreach (XElement line in replacement.CodeLineElements)
@@ -268,26 +273,26 @@ namespace OneNoteMomtion.Core
         {
             if (string.IsNullOrWhiteSpace(blockId))
             {
-                return CodeExtractResult.Failed("No code block identifier was given.");
+                return CodeExtractResult.Failed(_texts.Get(TextKeys.EngineNoCodeBlockId));
             }
 
             PageDocument? page = ParsePage(pageXml);
             if (page == null)
             {
-                return CodeExtractResult.Failed("The page content could not be read.");
+                return CodeExtractResult.Failed(_texts.Get(TextKeys.EnginePageContentUnreadable));
             }
 
             XElement? linkRun = page.AllTextRuns().FirstOrDefault(run => CodeBlockLink.RunLinksToBlock(PageDocument.GetRunHtml(run), blockId));
 
             if (linkRun == null)
             {
-                return CodeExtractResult.Failed("No code block for this button was found on this page.");
+                return CodeExtractResult.Failed(_texts.Get(TextKeys.EngineCodeBlockNotFound));
             }
 
             XElement? table = linkRun.Ancestors(page.One + "Table").FirstOrDefault();
             if (table == null)
             {
-                return CodeExtractResult.Failed("The code block for this button has an unexpected shape.");
+                return CodeExtractResult.Failed(_texts.Get(TextKeys.EngineCodeBlockUnexpectedShape));
             }
 
             List<XElement> lines = [.. GetCodeLinesOfTable(page, table)];
@@ -295,7 +300,7 @@ namespace OneNoteMomtion.Core
 
             if (string.IsNullOrEmpty(code))
             {
-                return CodeExtractResult.Failed("The code block is empty.");
+                return CodeExtractResult.Failed(_texts.Get(TextKeys.EngineCodeBlockEmpty));
             }
 
             return CodeExtractResult.Extracted(code, lines.Count);
@@ -401,7 +406,7 @@ namespace OneNoteMomtion.Core
 
         public IReadOnlyList<KeyValuePair<string, string>> AvailableLanguages()
         {
-            return [.. _registry.Selectable().Select(provider => new KeyValuePair<string, string>(provider.LanguageId, provider.DisplayName))];
+            return [.. _registry.Selectable().Select(provider => new KeyValuePair<string, string>(provider.LanguageId, _texts.LanguageName(provider)))];
         }
 
         private static string ExtractSourceCode(PageDocument page, IEnumerable<XElement> outlineElements)
@@ -414,9 +419,9 @@ namespace OneNoteMomtion.Core
             return PageDocument.TryParse(pageXml, out PageDocument? page) ? page : null;
         }
 
-        private static PageEditResult UnreadablePageResult()
+        private PageEditResult UnreadablePageResult()
         {
-            return PageEditResult.NoChange("The content of the OneNote page could not be read.");
+            return PageEditResult.NoChange(_texts.Get(TextKeys.EngineOneNotePageUnreadable));
         }
 
         private PageEditResult ResultOfChange(PageDocument page, int changed, string nothingChangedMessage)

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Office.Core;
 using OneNoteMomtion.AddIn.Ipc;
@@ -14,23 +15,53 @@ namespace OneNoteMomtion.AddIn
         private const string PageReformatCommand = "page.reformat";
         private const string NavigateRevealCommand = "nav.reveal";
         private const string NavigateCollapseAllCommand = "nav.collapseAll";
+        private const string RibbonTextPrefix = "ribbon.";
         private const int DefaultTimeoutMilliseconds = 4000;
         private const int PageReformatTimeoutMilliseconds = 30000;
 
         private const string LanguageMenuControlId = "languageMenu";
 
         private IRibbonUI? _ribbon;
-        private List<KeyValuePair<string, string>>? _languages;
+        // Both are swapped whole by the settings watcher's thread while the ribbon callbacks read them, hence
+        // volatile references to objects nobody changes after publishing them.
+        private volatile List<KeyValuePair<string, string>>? _languages;
+        private volatile IReadOnlyDictionary<string, string> _ribbonTexts = new Dictionary<string, string>();
+        private volatile bool _ribbonRefreshPending;
+        private volatile string _ribbonLanguage = string.Empty;
         private string _selectedLanguageId = string.Empty;
+        private SettingsWatcher? _settingsWatcher;
 
         public void OnRibbonLoad(IRibbonUI ribbon)
         {
             _ribbon = ribbon;
-            ShimLog.Info("Ribbon loaded.");
+            ShimLog.Info("Ribbon loaded on a " + Thread.CurrentThread.GetApartmentState() + " thread.");
+
+            try
+            {
+                _ribbonLanguage = RibbonTexts.CurrentLanguage();
+                _ribbonTexts = RibbonTexts.Load(_ribbonLanguage);
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Error("Failed to load the ribbon texts.", ex);
+            }
+
+            try
+            {
+                _settingsWatcher = new SettingsWatcher();
+                _settingsWatcher.Changed += (_, _) => RefreshRibbonTextsIfChanged();
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Warn("Failed to watch styles.json - a new interface language shows on the ribbon after OneNote restarts: " + ex.Message);
+            }
         }
 
         private void ReleaseRibbon()
         {
+            _settingsWatcher?.Dispose();
+            _settingsWatcher = null;
+
             if (_ribbon == null)
             {
                 return;
@@ -75,11 +106,28 @@ namespace OneNoteMomtion.AddIn
                 }
 
                 RefreshLanguageListIfStillEmpty();
+                RefreshRibbonIfPending();
             }
             catch (Exception ex)
             {
                 ShimLog.Error("Error handling ribbon button.", ex);
             }
+        }
+
+        public string OnGetLabel(IRibbonControl control)
+        {
+            string id = control?.Id ?? string.Empty;
+            return RibbonText(id, "label") ?? id;
+        }
+
+        public string OnGetScreentip(IRibbonControl control)
+        {
+            return RibbonText(control?.Id ?? string.Empty, "screentip") ?? string.Empty;
+        }
+
+        public string OnGetSupertip(IRibbonControl control)
+        {
+            return RibbonText(control?.Id ?? string.Empty, "supertip") ?? string.Empty;
         }
 
         private void RunInBackground(string command)
@@ -153,6 +201,7 @@ namespace OneNoteMomtion.AddIn
                 }
 
                 InvalidateLanguageMenu();
+                RefreshRibbonIfPending();
             }
             catch (Exception ex)
             {
@@ -162,9 +211,10 @@ namespace OneNoteMomtion.AddIn
 
         private List<KeyValuePair<string, string>> Languages()
         {
-            if (_languages != null)
+            List<KeyValuePair<string, string>>? cached = _languages;
+            if (cached != null)
             {
-                return _languages;
+                return cached;
             }
 
             EngineResponse response = Send("languages.list", null);
@@ -198,6 +248,59 @@ namespace OneNoteMomtion.AddIn
 
             _languages = languages;
             return languages;
+        }
+
+        private string? RibbonText(string controlId, string kind)
+        {
+            return _ribbonTexts.TryGetValue(RibbonTextPrefix + controlId + "." + kind, out string? text) ? text : null;
+        }
+
+        private void RefreshRibbonTextsIfChanged()
+        {
+            try
+            {
+                if (_ribbon == null)
+                {
+                    return;
+                }
+
+                string language = RibbonTexts.CurrentLanguage();
+                if (language == _ribbonLanguage)
+                {
+                    return;
+                }
+
+                ShimLog.Info("The interface language changed to \"" + language + "\" - refreshing the ribbon from a " + Thread.CurrentThread.GetApartmentState() + " thread.");
+                _ribbonTexts = RibbonTexts.Load(language);
+                _ribbonLanguage = language;
+                _languages = null;
+                _ribbonRefreshPending = true;
+                RefreshRibbonIfPending();
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Error("Failed to refresh the ribbon after styles.json changed.", ex);
+            }
+        }
+
+        // Called from the settings watcher's thread and again from the next ribbon callback, which runs on the
+        // thread Office calls the add-in on - so a refresh the first call could not deliver is not lost.
+        private void RefreshRibbonIfPending()
+        {
+            if (!_ribbonRefreshPending || _ribbon == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _ribbon.Invalidate();
+                _ribbonRefreshPending = false;
+            }
+            catch (Exception ex)
+            {
+                ShimLog.Warn("Failed to invalidate the ribbon, retrying on the next ribbon command: " + ex.Message);
+            }
         }
 
         private static string ControlIdOf(string languageId)

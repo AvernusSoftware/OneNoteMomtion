@@ -67,8 +67,25 @@ namespace OneNoteMomtion.Core.Styles
             {
                 string json = File.ReadAllText(target, Encoding.UTF8);
                 StyleCatalog catalog = JsonSerializer.Deserialize<StyleCatalog>(json, ReadOptions) ?? StyleCatalog.CreateDefault();
+                bool outdated = catalog.Version < StyleCatalog.CurrentVersion;
                 catalog.FillMissingWithDefaults();
-                return new StyleCatalogLoadResult(catalog, target, false, null);
+
+                // Writing a migrated file back at once keeps the migration from running again on a value the
+                // user sets by hand afterwards.
+                string? writeError = null;
+                if (outdated)
+                {
+                    try
+                    {
+                        Save(catalog, target);
+                    }
+                    catch (Exception ex)
+                    {
+                        writeError = "Failed to save the migrated configuration file: " + ex.Message;
+                    }
+                }
+
+                return new StyleCatalogLoadResult(catalog, target, false, writeError);
             }
             catch (Exception ex)
             {

@@ -2,9 +2,11 @@
 import { ChevronRight, Search } from 'lucide-react'
 import { actionKey, buildPaletteActions, filterActions, groupLabel } from '../commands'
 import type { PaletteAction } from '../commands'
+import { t } from '../i18n/texts'
 import { useLanguages } from '../hooks/useLanguages'
 import { useListNavigation } from '../hooks/useListNavigation'
 import { usePaletteConfig } from '../hooks/usePaletteConfig'
+import { useTexts } from '../hooks/useTexts'
 
 interface FloatingPaletteProps {
   query: string
@@ -32,8 +34,9 @@ export default function FloatingPalette({
   const inputRef = useRef<HTMLInputElement>(null)
   const { languages } = useLanguages()
   const config = usePaletteConfig()
-  const actions = useMemo(() => buildPaletteActions(languages, config), [languages, config])
-  const matches = useMemo(() => filterActions(actions, query), [actions, query])
+  const texts = useTexts()
+  const actions = useMemo(() => buildPaletteActions(languages, texts, config), [languages, texts, config])
+  const matches = useMemo(() => filterActions(actions, query, texts), [actions, query, texts])
 
   const restoredIndex = matches.findIndex((action) => actionKey(action) === restoreActiveId)
 
@@ -70,8 +73,8 @@ export default function FloatingPalette({
           autoFocus
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Search actions…"
-          aria-label="Search actions"
+          placeholder={t(texts, 'palette.search.placeholder')}
+          aria-label={t(texts, 'palette.search.label')}
           className="w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-muted"
         />
       </div>
@@ -79,9 +82,7 @@ export default function FloatingPalette({
       <div ref={listRef} className="flex-1 overflow-y-auto py-1.5" onMouseMove={handleMouseMove}>
         {matches.length === 0 ? (
           <p className="px-3 py-6 text-center text-[12px] text-ink-muted">
-            {query.trim().length === 0
-              ? 'Every action is switched off in styles.json.'
-              : `No actions match "${query}".`}
+            {query.trim().length === 0 ? t(texts, 'palette.empty.allDisabled') : t(texts, 'palette.empty.noMatch', { query })}
           </p>
         ) : (
           matches.map((action, index) => {
@@ -94,7 +95,7 @@ export default function FloatingPalette({
               <div key={actionKey(action)}>
                 {showGroup && (
                   <p className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
-                    {groupLabel(action.group)}
+                    {groupLabel(action.group, texts)}
                   </p>
                 )}
 

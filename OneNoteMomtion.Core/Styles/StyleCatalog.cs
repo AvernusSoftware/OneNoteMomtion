@@ -2,13 +2,20 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using OneNoteMomtion.Core.Highlighting.Detection;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Text;
 
 namespace OneNoteMomtion.Core.Styles
 {
     public sealed class StyleCatalog
     {
-        public int Version { get; set; } = 1;
+        public const int CurrentVersion = 2;
+
+        private const string LegacyCopyButtonText = "Copy";
+
+        public int Version { get; set; } = CurrentVersion;
+
+        public string Language { get; set; } = UiLanguage.Auto;
 
         public Dictionary<string, StyleDefinition> Styles { get; set; } = new Dictionary<string, StyleDefinition>(StringComparer.OrdinalIgnoreCase);
 
@@ -44,6 +51,11 @@ namespace OneNoteMomtion.Core.Styles
 
         public void FillMissingWithDefaults()
         {
+            if (string.IsNullOrWhiteSpace(Language))
+            {
+                Language = UiLanguage.Auto;
+            }
+
             Styles = WithOrdinalIgnoreCase(Styles);
             HighlightTheme = WithOrdinalIgnoreCase(HighlightTheme);
 
@@ -65,6 +77,15 @@ namespace OneNoteMomtion.Core.Styles
             }
 
             CodeBlock ??= defaults.CodeBlock;
+
+            // Before version 2 every file got "Copy" written out as the default. Clearing it lets the button
+            // follow the interface language; a "Copy" written after that is the user's own choice and stays.
+            if (Version < CurrentVersion && CodeBlock.CopyButtonText == LegacyCopyButtonText)
+            {
+                CodeBlock.CopyButtonText = null;
+            }
+
+            Version = CurrentVersion;
             BodyText ??= new BodyTextOptions();
             TextCleanup ??= new TextCleanupOptions();
             CodeDetection ??= new CodeDetectionOptions();

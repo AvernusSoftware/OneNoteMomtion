@@ -1,4 +1,6 @@
-﻿import { readPaletteConfig } from '../paletteConfig'
+﻿import { currentTexts, englishTexts, readUiTexts, t } from '../i18n/texts'
+import type { UiTexts } from '../i18n/texts'
+import { readPaletteConfig } from '../paletteConfig'
 import type { PaletteConfig } from '../paletteConfig'
 
 export interface CommandResponse {
@@ -88,7 +90,7 @@ export function sendCommand(command: string, argument?: string): Promise<Command
   return new Promise<CommandResponse>((resolve, reject) => {
     const timer = window.setTimeout(() => {
       pending.delete(requestId)
-      reject(new Error(`The engine did not answer the "${command}" command.`))
+      reject(new Error(t(currentTexts(), 'palette.engineTimeout', { command })))
     }, REQUEST_TIMEOUT_MS)
 
     pending.set(requestId, { resolve, reject, timer })
@@ -128,6 +130,11 @@ export async function fetchPaletteConfig(): Promise<PaletteConfig> {
   return readPaletteConfig(response.data)
 }
 
+export async function fetchTexts(): Promise<UiTexts> {
+  const response = await sendCommand('texts.palette')
+  return readUiTexts(response.data)
+}
+
 function numbered(...keys: string[]): Record<string, { order: number; enabled: boolean }> {
   return Object.fromEntries(keys.map((key, index) => [key, { order: (index + 1) * 10, enabled: true }]))
 }
@@ -162,6 +169,17 @@ async function mockCommand(command: string, argument?: string): Promise<CommandR
     }
   }
 
+  if (command === 'texts.palette') {
+    // Development mode previews another language with ?lang=pl in the address.
+    const language = new URLSearchParams(window.location.search).get('lang')
+    const data =
+      import.meta.env.DEV && language === 'pl'
+        ? { language, texts: (await import('../../../OneNoteMomtion.Core/Localization/pl.json')).default }
+        : englishTexts
+
+    return { success: true, changed: false, data }
+  }
+
   if (command === 'settings.get') {
     return {
       success: true,
@@ -183,6 +201,6 @@ async function mockCommand(command: string, argument?: string): Promise<CommandR
   return {
     success: true,
     changed: !command.startsWith('ui.'),
-    message: `[tryb deweloperski] ${command}${argument ? ` (${argument})` : ''}`,
+    message: t(currentTexts(), 'palette.devMessage', { command: `${command}${argument ? ` (${argument})` : ''}` }),
   }
 }

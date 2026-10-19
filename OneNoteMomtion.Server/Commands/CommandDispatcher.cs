@@ -7,6 +7,7 @@ using System.Text;
 using OneNoteMomtion.Core;
 using OneNoteMomtion.Core.Hierarchy;
 using OneNoteMomtion.Core.Highlighting;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Styles;
 using OneNoteMomtion.Core.Text;
 using OneNoteMomtion.Server.Input;
@@ -124,6 +125,9 @@ namespace OneNoteMomtion.Server.Commands
                 case CommandIds.PaletteConfig:
                     return CommandResult.Payload(_services.Catalog.Palette);
 
+                case CommandIds.TextsPalette:
+                    return CommandResult.Payload(new TextsPayload(_services.Texts.Language, _services.Texts.WithPrefix(TextKeys.PalettePrefix)));
+
                 case CommandIds.PaletteShow:
                     _palette.Show("actions");
                     return CommandResult.NothingToDo();
@@ -133,13 +137,13 @@ namespace OneNoteMomtion.Server.Commands
                     return CommandResult.NothingToDo();
 
                 case CommandIds.EnginePing:
-                    return CommandResult.NothingToDo("The engine is running.");
+                    return CommandResult.NothingToDo(_services.Texts.Get(TextKeys.EngineRunning));
 
                 case CommandIds.EnginePid:
                     return CommandResult.Payload(Environment.ProcessId.ToString(CultureInfo.InvariantCulture));
 
                 default:
-                    return CommandResult.Failed("Unknown command: \"" + command + "\".");
+                    return CommandResult.Failed(_services.Texts.Format(TextKeys.EngineUnknownCommand, ("command", command)));
             }
         }
 
@@ -159,7 +163,7 @@ namespace OneNoteMomtion.Server.Commands
         {
             if (string.IsNullOrWhiteSpace(languageId))
             {
-                return CommandResult.Failed("No language was chosen.");
+                return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineNoLanguageChosen));
             }
 
             return RunOnPage((editor, xml) => editor.FormatCode(xml, languageId!));
@@ -169,12 +173,12 @@ namespace OneNoteMomtion.Server.Commands
         {
             if (string.IsNullOrWhiteSpace(blockId))
             {
-                return CommandResult.Failed("No code block identifier was given.");
+                return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineNoCodeBlockId));
             }
 
             CommandResult result = WithSession(session => CodeCopyOperation.Run(_services.Editor, session, blockId!));
 
-            ToastWindow.Show(result.Message ?? "The code was copied.");
+            ToastWindow.Show(result.Message ?? _services.Texts.Get(TextKeys.EngineCodeCopied));
 
             return result;
         }
@@ -186,18 +190,18 @@ namespace OneNoteMomtion.Server.Commands
                 string? pageId = session.GetCurrentPageId();
                 if (pageId is null)
                 {
-                    return CommandResult.Failed("The current page could not be read.");
+                    return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineCurrentPageUnreadable));
                 }
 
                 string? hierarchyXml = session.GetHierarchyXml(null, HierarchyScope.Pages);
                 if (string.IsNullOrEmpty(hierarchyXml) || !HierarchyDocument.TryParse(hierarchyXml!, out HierarchyDocument? hierarchy))
                 {
-                    return CommandResult.Failed("The notebook tree could not be read from OneNote.");
+                    return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineNotebookTreeUnreadable));
                 }
 
                 if (!hierarchy.TryFindPagePath(pageId, out HierarchyPath? path))
                 {
-                    return CommandResult.Failed("This page is not in any notebook currently open in OneNote.");
+                    return CommandResult.Failed(_services.Texts.Get(TextKeys.EnginePageNotInOpenNotebook));
                 }
 
                 session.NavigateToPage(pageId);
@@ -225,7 +229,7 @@ namespace OneNoteMomtion.Server.Commands
 
         private CommandResult DumpNavigationTree()
         {
-            if (!UiaTreeDump.TryDump(_navigationPane.FindOneNoteWindow(), out string message))
+            if (!UiaTreeDump.TryDump(_navigationPane.FindOneNoteWindow(), _services.Texts, out string message))
             {
                 return CommandResult.Failed(message);
             }
@@ -240,7 +244,7 @@ namespace OneNoteMomtion.Server.Commands
 
             foreach (ISyntaxHighlightProvider provider in _services.Registry.Selectable())
             {
-                entries.Add(provider.LanguageId + "=" + provider.DisplayName);
+                entries.Add(provider.LanguageId + "=" + _services.Texts.LanguageName(provider));
             }
 
             return entries;
@@ -250,17 +254,17 @@ namespace OneNoteMomtion.Server.Commands
         {
             if (string.IsNullOrWhiteSpace(json))
             {
-                return CommandResult.Failed("There is no configuration content to save.");
+                return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineNothingToSave));
             }
 
             try
             {
                 _services.SaveCatalog(StyleCatalogStore.Deserialize(json!));
-                return CommandResult.Applied("The settings were saved.");
+                return CommandResult.Applied(_services.Texts.Get(TextKeys.EngineSettingsSaved));
             }
             catch (Exception ex)
             {
-                return CommandResult.Failed("The configuration could not be read: " + ex.Message);
+                return CommandResult.Failed(_services.Texts.Format(TextKeys.EngineSettingsUnreadable, ("error", ex.Message)));
             }
         }
 
@@ -271,7 +275,7 @@ namespace OneNoteMomtion.Server.Commands
                 string? folder = Path.GetDirectoryName(_services.SettingsPath);
                 if (string.IsNullOrEmpty(folder))
                 {
-                    return CommandResult.Failed("The configuration folder could not be determined.");
+                    return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineSettingsFolderUnknown));
                 }
 
                 Directory.CreateDirectory(folder);
@@ -290,7 +294,7 @@ namespace OneNoteMomtion.Server.Commands
             {
                 if (!session.TryGetCurrentPage(out string pageId, out string pageXml))
                 {
-                    return CommandResult.Failed("The current page could not be read.");
+                    return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineCurrentPageUnreadable));
                 }
 
                 PageEditResult result = operation(_services.Editor, pageXml);
@@ -301,7 +305,7 @@ namespace OneNoteMomtion.Server.Commands
 
                 if (!session.UpdatePageXml(result.Xml!))
                 {
-                    return CommandResult.Failed("The changes could not be saved to the page.");
+                    return CommandResult.Failed(_services.Texts.Get(TextKeys.EnginePageNotSaved));
                 }
 
                 if (result.FocusObjectId != null)
@@ -324,7 +328,7 @@ namespace OneNoteMomtion.Server.Commands
                 OneNoteSession? session = _oneNote.TryGetSession();
                 if (session is null)
                 {
-                    return CommandResult.Failed("There is no connection to OneNote.");
+                    return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineNoConnection));
                 }
 
                 try
@@ -338,7 +342,7 @@ namespace OneNoteMomtion.Server.Commands
                 }
             }
 
-            return CommandResult.Failed("The connection to OneNote could not be re-established.");
+            return CommandResult.Failed(_services.Texts.Get(TextKeys.EngineReconnectFailed));
         }
     }
 }

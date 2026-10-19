@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using OneNoteMomtion.Core.Highlighting;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Server.Commands;
 using OneNoteMomtion.Server.Ipc;
 using OneNoteMomtion.Server.OneNote;
@@ -91,18 +92,20 @@ namespace OneNoteMomtion.Server
         {
             EngineLog.Info("No engine is running - copying the code block in the protocol handler process.");
 
+            EngineServices services = new();
+            Localizer texts = services.Texts;
             CommandResult result;
 
             using (OneNoteConnection connection = new())
             {
                 OneNoteSession? session = connection.TryGetSession();
 
-                result = session is null ? CommandResult.Failed("There is no connection to OneNote.") : CodeCopyOperation.Run(new EngineServices().Editor, session, blockId);
+                result = session is null ? CommandResult.Failed(texts.Get(TextKeys.EngineNoConnection)) : CodeCopyOperation.Run(services.Editor, session, blockId);
             }
 
             EngineLog.Info("Copy result: " + (result.Success ? "ok" : "failed") + " - " + result.Message);
 
-            ShowToastAndWait(result.Message ?? "The code was copied.");
+            ShowToastAndWait(result.Message ?? texts.Get(TextKeys.EngineCodeCopied));
             return result.Success ? 0 : 1;
         }
 

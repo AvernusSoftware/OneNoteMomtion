@@ -24,7 +24,8 @@ namespace OneNoteMomtion.Core.Styles
 
         public bool ShowCopyButton { get; set; } = true;
 
-        public string CopyButtonText { get; set; } = "Copy";
+        /// <remarks><c>null</c> shows the button text of the interface language.</remarks>
+        public string? CopyButtonText { get; set; }
 
         public double HeaderFontSize { get; set; } = 9.0;
 

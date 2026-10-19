@@ -18,5 +18,9 @@ export default defineConfig({
 
   server: {
     port: 5273,
+    // The interface texts live in OneNoteMomtion.Core/Localization, shared with the engine and the ribbon.
+    fs: {
+      allow: ['.', '../OneNoteMomtion.Core/Localization'],
+    },
   },
 })

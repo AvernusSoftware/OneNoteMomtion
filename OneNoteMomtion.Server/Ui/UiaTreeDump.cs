@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using Interop.UIAutomationClient;
+using OneNoteMomtion.Core.Localization;
 
 namespace OneNoteMomtion.Server.Ui
 {
@@ -15,13 +17,13 @@ namespace OneNoteMomtion.Server.Ui
 
         internal static string Path => System.IO.Path.Combine(System.IO.Path.GetDirectoryName(EngineLog.Path) ?? ".", "uia-tree.txt");
 
-        public static bool TryDump(IntPtr window, out string message)
+        public static bool TryDump(IntPtr window, Localizer texts, out string message)
         {
             message = string.Empty;
 
             if (window == IntPtr.Zero)
             {
-                message = "The OneNote window could not be found.";
+                message = texts.Get(TextKeys.EngineOneNoteWindowNotFound);
                 return false;
             }
 
@@ -38,7 +40,7 @@ namespace OneNoteMomtion.Server.Ui
             catch (Exception ex)
             {
                 EngineLog.Error($"UIA-TREE: could not attach to the window.", ex);
-                message = $"UI Automation could not attach to the OneNote window: {ex.Message}";
+                message = texts.Format(TextKeys.EngineAutomationAttachFailed, ("error", ex.Message));
                 return false;
             }
 
@@ -69,12 +71,12 @@ namespace OneNoteMomtion.Server.Ui
             catch (Exception ex)
             {
                 EngineLog.Error("UIA-TREE: writing the dump failed.", ex);
-                message = "The tree could not be written: " + ex.Message;
+                message = texts.Format(TextKeys.EngineTreeNotWritten, ("error", ex.Message));
                 return false;
             }
 
             EngineLog.Info($"UIA-TREE: {visited} nodes written to {Path}.");
-            message = $"{visited} nodes written to {Path}";
+            message = texts.Format(TextKeys.EngineTreeWritten, ("count", visited.ToString(CultureInfo.InvariantCulture)), ("path", Path));
             return true;
         }
 

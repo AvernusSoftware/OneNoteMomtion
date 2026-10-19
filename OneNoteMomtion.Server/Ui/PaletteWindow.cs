@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Server.Commands;
 
 namespace OneNoteMomtion.Server.Ui
@@ -24,6 +25,7 @@ namespace OneNoteMomtion.Server.Ui
         private readonly WebView2 _webView;
         private readonly Func<string, string?, CommandResult> _handler;
         private readonly string _contentRoot;
+        private readonly Func<Localizer> _texts;
 
         private Task? _webViewReady;
         private bool _everActivated;
@@ -31,10 +33,11 @@ namespace OneNoteMomtion.Server.Ui
         private string _currentView = "actions";
         private Point _anchor;
 
-        public PaletteWindow(Func<string, string?, CommandResult> handler, string contentRoot)
+        public PaletteWindow(Func<string, string?, CommandResult> handler, string contentRoot, Func<Localizer> texts)
         {
             _handler = handler ?? throw new ArgumentNullException(nameof(handler));
             _contentRoot = contentRoot;
+            _texts = texts ?? throw new ArgumentNullException(nameof(texts));
 
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
@@ -170,17 +173,19 @@ namespace OneNoteMomtion.Server.Ui
                 else
                 {
                     EngineLog.Warn($"Missing frontend directory: {_contentRoot}");
-                    core.NavigateToString(MissingFrontendHtml(_contentRoot));
+                    core.NavigateToString(MissingFrontendHtml(_contentRoot, _texts()));
                 }
             }
             catch (Exception ex)
             {
                 EngineLog.Error("Failed to start WebView2.", ex);
 
+                Localizer texts = _texts();
+
                 MessageBox.Show(
-                    "Failed to start the WebView2 component." + Environment.NewLine + Environment.NewLine +
+                    texts.Get(TextKeys.EngineWebViewFailed) + Environment.NewLine + Environment.NewLine +
                     ex.Message + Environment.NewLine + Environment.NewLine +
-                    "Check whether the Microsoft Edge WebView2 Runtime is installed.",
+                    texts.Get(TextKeys.EngineWebViewCheckRuntime),
                     "OneNoteMomtion",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
@@ -251,7 +256,7 @@ namespace OneNoteMomtion.Server.Ui
                     return ResizeToContent(request.Argument);
 
                 default:
-                    return CommandResult.Failed("Unknown interface command: " + request.Command);
+                    return CommandResult.Failed(_texts().Format(TextKeys.EngineUnknownUiCommand, ("command", request.Command ?? string.Empty)));
             }
         }
 
@@ -259,13 +264,13 @@ namespace OneNoteMomtion.Server.Ui
         {
             if (string.IsNullOrWhiteSpace(argument))
             {
-                return CommandResult.Failed("No dimensions were given.");
+                return CommandResult.Failed(_texts().Get(TextKeys.EngineNoDimensions));
             }
 
             string[] parts = argument!.Split('x');
             if (parts.Length != 2 || !int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int width) || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int height))
             {
-                return CommandResult.Failed("Unreadable dimensions: " + argument);
+                return CommandResult.Failed(_texts().Format(TextKeys.EngineUnreadableDimensions, ("value", argument)));
             }
 
             double scale = DeviceDpi / 96.0;
@@ -306,15 +311,14 @@ namespace OneNoteMomtion.Server.Ui
             }
         }
 
-        private static string MissingFrontendHtml(string contentRoot)
+        private static string MissingFrontendHtml(string contentRoot, Localizer texts)
         {
-            return "<!doctype html><html><head><meta charset=\"utf-8\"><style>" +
+            return "<!doctype html><html lang=\"" + texts.Language + "\"><head><meta charset=\"utf-8\"><style>" +
                    "body{font-family:Segoe UI,sans-serif;padding:24px;color:#37352F;background:#FAFAF9}" +
                    "code{background:#F1F1EF;padding:2px 6px;border-radius:4px}</style></head><body>" +
-                   "<h3>Frontend not built</h3><p>Directory not found:</p><p><code>" +
+                   "<h3>" + texts.Get(TextKeys.EngineFrontendMissingTitle) + "</h3><p>" + texts.Get(TextKeys.EngineFrontendMissingDirectory) + "</p><p><code>" +
                    System.Net.WebUtility.HtmlEncode(contentRoot) +
-                   "</code></p><p>Run <code>npm install</code> and <code>npm run build</code> in the " +
-                   "<code>OneNoteMomtion.Frontend</code> project, then rebuild the engine.</p></body></html>";
+                   "</code></p><p>" + texts.Get(TextKeys.EngineFrontendMissingHint) + "</p></body></html>";
         }
 
         [DllImport("dwmapi.dll")]

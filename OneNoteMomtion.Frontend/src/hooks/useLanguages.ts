@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import { fetchLanguages } from '../bridge/onenoteBridge'
+import { useTexts } from './useTexts'
 
 export interface Language {
   id: string
@@ -12,26 +13,33 @@ export interface LanguagesState {
   loading: boolean
 }
 
-let cached: Promise<Language[]> | null = null
+// The engine names "Plain text" in the interface language, so the list is fetched again once that changes.
+let cached: { language: string; languages: Promise<Language[]> } | null = null
 
-function loadLanguages(): Promise<Language[]> {
-  if (cached === null) {
-    cached = fetchLanguages().catch((reason: unknown) => {
-      cached = null
+export function loadLanguages(language: string): Promise<Language[]> {
+  if (cached === null || cached.language !== language) {
+    const languages = fetchLanguages().catch((reason: unknown) => {
+      if (cached?.languages === languages) {
+        cached = null
+      }
+
       throw reason
     })
+
+    cached = { language, languages }
   }
 
-  return cached
+  return cached.languages
 }
 
 export function useLanguages(): LanguagesState {
   const [state, setState] = useState<LanguagesState>({ languages: [], error: null, loading: true })
+  const { language } = useTexts()
 
   useEffect(() => {
     let cancelled = false
 
-    loadLanguages()
+    loadLanguages(language)
       .then((languages) => {
         if (!cancelled) {
           setState({ languages, error: null, loading: false })
@@ -50,7 +58,7 @@ export function useLanguages(): LanguagesState {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [language])
 
   return state
 }

@@ -370,13 +370,11 @@ function Install-DefaultRibbonTab {
         return
     }
 
-    # Group label -> "control id = imageMso", in ribbon order. Styles and nav.collapseAll are left
-    # out on purpose: they stay in the catalog tab, for whoever wants them.
-    $layout = [ordered] @{
-        'Text Case' = @('caseUpper=ChangeCase', 'caseLower=ChangeCase', 'caseCapitalize=ChangeCase', 'caseSentence=ChangeCase', 'caseToggle=ChangeCase')
-        'Language'  = @('languageMenu=SetLanguageDialog')
-        'Tools'     = @('spellDisable=SpellingAndGrammar', 'spellEnable=SpellingAndGrammar', 'navReveal=FindDialog', 'pageReformat=TableAutoFormat', 'settingsOpen=ApplicationOptionsDialog')
-    }
+    # Catalog groups shown on the tab, in ribbon order. Styles and Navigation are left out on purpose:
+    # they stay in the catalog tab, for whoever wants them. The tab references the add-in's own groups
+    # instead of building copies, because a group defined in this file can only carry a fixed label -
+    # the add-in's groups take theirs from the interface language in styles.json, reinstall or not.
+    $groups = @('grpTextCase', 'grpCode', 'grpTools')
 
     $directory = Split-Path -Parent $OfficeSolutionsPath
     if (-not (Test-Path $directory)) {
@@ -437,25 +435,11 @@ function Install-DefaultRibbonTab {
     $tab.SetAttribute('label', 'OneNoteMomtion')
     $tab.SetAttribute('insertAfterQ', "onm:$CatalogTabId")
 
-    $groupNumber = 0
-    foreach ($groupLabel in $layout.Keys) {
-        $groupNumber++
-
+    foreach ($groupId in $groups) {
         $group = $document.CreateElement('mso', 'group', $MsoNamespace)
-        $group.SetAttribute('id', "$RibbonTabId.Group$groupNumber")
-        $group.SetAttribute('label', $groupLabel)
+        $group.SetAttribute('idQ', "onm:$groupId")
+        $group.SetAttribute('visible', 'true')
         $group.SetAttribute('autoScale', 'true')
-
-        foreach ($entry in $layout[$groupLabel]) {
-            $controlId, $imageMso = $entry -split '=', 2
-
-            $control = $document.CreateElement('mso', 'control', $MsoNamespace)
-            $control.SetAttribute('idQ', "onm:$controlId")
-            $control.SetAttribute('imageMso', $imageMso)
-            $control.SetAttribute('visible', 'true')
-            $group.AppendChild($control) | Out-Null
-        }
-
         $tab.AppendChild($group) | Out-Null
     }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using NUnit.Framework;
+using OneNoteMomtion.Core.Localization;
 using OneNoteMomtion.Core.Styles;
 
 namespace OneNoteMomtion.Core.Tests
@@ -52,6 +53,71 @@ namespace OneNoteMomtion.Core.Tests
                 Assert.That(reloaded.AutoMarkdownTyping, Is.False);
                 Assert.That(reloaded.AutoNormalAfterHeading, Is.False);
             }
+        }
+
+        [Test]
+        public void SaveAndLoad_RoundTripsTheInterfaceLanguage()
+        {
+            StyleCatalog original = StyleCatalog.CreateDefault();
+            original.Language = "pl";
+
+            StyleCatalogStore.Save(original, _path);
+
+            Assert.That(StyleCatalogStore.Load(_path).Language, Is.EqualTo("pl"));
+        }
+
+        [Test]
+        public void Load_FollowsWindowsWhenTheFileHasNoLanguage()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1 }");
+
+            Assert.That(StyleCatalogStore.Load(_path).Language, Is.EqualTo(UiLanguage.Auto));
+        }
+
+        [Test]
+        public void Load_LetsTheCopyButtonOfAnOlderFileFollowTheInterfaceLanguage()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1, \"codeBlock\": { \"copyButtonText\": \"Copy\" } }");
+
+            StyleCatalog catalog = StyleCatalogStore.Load(_path);
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(catalog.CodeBlock.CopyButtonText, Is.Null);
+                Assert.That(catalog.Version, Is.EqualTo(StyleCatalog.CurrentVersion));
+            }
+        }
+
+        [Test]
+        public void Load_WritesTheMigrationBackSoACopyTypedLaterStays()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1, \"codeBlock\": { \"copyButtonText\": \"Copy\" } }");
+
+            StyleCatalogStore.Load(_path);
+            string migrated = File.ReadAllText(_path);
+            File.WriteAllText(_path, migrated.Replace("\"codeBlock\": {", "\"codeBlock\": { \"copyButtonText\": \"Copy\","));
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(migrated, Does.Contain("\"version\": 2").And.Not.Contain("copyButtonText"));
+                Assert.That(StyleCatalogStore.Load(_path).CodeBlock.CopyButtonText, Is.EqualTo("Copy"));
+            }
+        }
+
+        [Test]
+        public void Load_KeepsCopyChosenInACurrentFile()
+        {
+            File.WriteAllText(_path, "{ \"version\": 2, \"codeBlock\": { \"copyButtonText\": \"Copy\" } }");
+
+            Assert.That(StyleCatalogStore.Load(_path).CodeBlock.CopyButtonText, Is.EqualTo("Copy"));
+        }
+
+        [Test]
+        public void Load_KeepsAnOlderFilesOwnButtonText()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1, \"codeBlock\": { \"copyButtonText\": \"Kopiuj kod\" } }");
+
+            Assert.That(StyleCatalogStore.Load(_path).CodeBlock.CopyButtonText, Is.EqualTo("Kopiuj kod"));
         }
 
         [Test]

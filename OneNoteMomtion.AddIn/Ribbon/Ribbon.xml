@@ -1,57 +1,54 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- Labels and tips come from OneNoteMomtion.Core/Localization/*.json (keys "ribbon.<id>.label", ".screentip",
+     ".supertip"), embedded in the add-in, so the interface language follows styles.json without reinstalling. The tab
+     install.ps1 puts on the ribbon references these groups by idQ, which is why their labels follow too. -->
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnRibbonLoad">
   <ribbon>
     <tabs>
       <tab id="OneNoteMomtionCommands" label="OneNoteMomtion">
 
-        <group id="grpStyles" label="Styles">
-          <button id="styleHeading1" label="Heading 1" tag="style.heading1" onAction="OnCommand" imageMso="StyleGalleryClassic"
-                  screentip="Heading 1" supertip="Applies the configured Heading 1 style to the selection." />
-          <button id="styleHeading2" label="Heading 2" tag="style.heading2" onAction="OnCommand" imageMso="StyleGalleryClassic"
-                  screentip="Heading 2" supertip="Applies the configured Heading 2 style to the selection." />
-          <button id="styleHeading3" label="Heading 3" tag="style.heading3" onAction="OnCommand" imageMso="StyleGalleryClassic"
-                  screentip="Heading 3" supertip="Applies the configured Heading 3 style to the selection." />
-          <button id="styleNormal" label="Normal Text" tag="style.normal" onAction="OnCommand" imageMso="StyleGalleryClassic"
-                  screentip="Normal text" supertip="Applies the configured Normal text style to the selection." />
+        <group id="grpStyles" getLabel="OnGetLabel">
+          <button id="styleHeading1" getLabel="OnGetLabel" tag="style.heading1" onAction="OnCommand" imageMso="StyleGalleryClassic"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
+          <button id="styleHeading2" getLabel="OnGetLabel" tag="style.heading2" onAction="OnCommand" imageMso="StyleGalleryClassic"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
+          <button id="styleHeading3" getLabel="OnGetLabel" tag="style.heading3" onAction="OnCommand" imageMso="StyleGalleryClassic"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
+          <button id="styleNormal" getLabel="OnGetLabel" tag="style.normal" onAction="OnCommand" imageMso="StyleGalleryClassic"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
         </group>
 
-        <group id="grpNavigation" label="Navigation">
-          <button id="navReveal" label="Show in Notebook Tree" tag="nav.reveal" onAction="OnCommand" imageMso="FindDialog"
-                  screentip="Show in notebook tree"
-                  supertip="Expands and selects this page in OneNote's navigation pane." />
-          <button id="navCollapseAll" label="Collapse the Notebook Tree" tag="nav.collapseAll" onAction="OnCommand" imageMso="OutlineCollapse"
-                  screentip="Collapse the notebook tree"
-                  supertip="Folds every notebook, section group and section in OneNote's navigation pane." />
+        <group id="grpNavigation" getLabel="OnGetLabel">
+          <button id="navCollapseAll" getLabel="OnGetLabel" tag="nav.collapseAll" onAction="OnCommand" imageMso="OutlineCollapse"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
         </group>
 
-        <group id="grpCode" label="Code">
-          <dynamicMenu id="languageMenu" label="Language"
+        <group id="grpCode" getLabel="OnGetLabel">
+          <dynamicMenu id="languageMenu" getLabel="OnGetLabel"
                        getContent="OnLanguageMenuContent"
                        imageMso="SetLanguageDialog"
-                       screentip="Syntax highlighting language"
-                       supertip="The list comes from the language registry in OneNoteMomtion.Core. Picking one formats the selection straight away - including when it is the same language as before." />
+                       getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
         </group>
 
-        <group id="grpTextCase" label="Text Case">
-          <button id="caseUpper" label="UPPER CASE" tag="case.upper" onAction="OnCommand" imageMso="ChangeCase" />
-          <button id="caseLower" label="lower case" tag="case.lower" onAction="OnCommand" imageMso="ChangeCase" />
-          <button id="caseCapitalize" label="Capitalize Each Word" tag="case.capitalize" onAction="OnCommand" imageMso="ChangeCase" />
-          <button id="caseSentence" label="Sentence case" tag="case.sentence" onAction="OnCommand" imageMso="ChangeCase" />
-          <button id="caseToggle" label="tOGGLE cASE" tag="case.toggle" onAction="OnCommand" imageMso="ChangeCase" />
+        <group id="grpTextCase" getLabel="OnGetLabel">
+          <button id="caseUpper" getLabel="OnGetLabel" tag="case.upper" onAction="OnCommand" imageMso="ChangeCase" />
+          <button id="caseLower" getLabel="OnGetLabel" tag="case.lower" onAction="OnCommand" imageMso="ChangeCase" />
+          <button id="caseCapitalize" getLabel="OnGetLabel" tag="case.capitalize" onAction="OnCommand" imageMso="ChangeCase" />
+          <button id="caseSentence" getLabel="OnGetLabel" tag="case.sentence" onAction="OnCommand" imageMso="ChangeCase" />
+          <button id="caseToggle" getLabel="OnGetLabel" tag="case.toggle" onAction="OnCommand" imageMso="ChangeCase" />
         </group>
 
-        <group id="grpTools" label="Tools">
-          <button id="spellDisable" label="Disable Spellcheck" tag="spell.disable" onAction="OnCommand" imageMso="SpellingAndGrammar"
-                  screentip="Disable spell checking"
-                  supertip="Gives the selected text a language with no dictionary, which makes the red underlines disappear." />
-          <button id="spellEnable" label="Enable Spellcheck" tag="spell.enable" onAction="OnCommand" imageMso="SpellingAndGrammar"
-                  screentip="Enable spell checking"
-                  supertip="Undoes the forced language and restores spell checking." />
-          <button id="pageReformat" label="Reformat Page" tag="page.reformat" onAction="OnCommand" imageMso="TableAutoFormat"
-                  screentip="Reformat the whole page"
-                  supertip="Puts the configured styles onto every heading and paragraph, tidies whitespace and blank paragraphs, and refreshes the code blocks. One Ctrl+Z takes all of it back." />
-          <button id="settingsOpen" label="Settings" tag="settings.open" onAction="OnCommand" imageMso="ApplicationOptionsDialog"
-                  screentip="Settings" supertip="Opens the style editor in the floating palette." />
+        <group id="grpTools" getLabel="OnGetLabel">
+          <button id="spellDisable" getLabel="OnGetLabel" tag="spell.disable" onAction="OnCommand" imageMso="SpellingAndGrammar"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
+          <button id="spellEnable" getLabel="OnGetLabel" tag="spell.enable" onAction="OnCommand" imageMso="SpellingAndGrammar"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
+          <button id="navReveal" getLabel="OnGetLabel" tag="nav.reveal" onAction="OnCommand" imageMso="FindDialog"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
+          <button id="pageReformat" getLabel="OnGetLabel" tag="page.reformat" onAction="OnCommand" imageMso="TableAutoFormat"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
+          <button id="settingsOpen" getLabel="OnGetLabel" tag="settings.open" onAction="OnCommand" imageMso="ApplicationOptionsDialog"
+                  getScreentip="OnGetScreentip" getSupertip="OnGetSupertip" />
         </group>
 
       </tab>

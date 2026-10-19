@@ -79,14 +79,14 @@ commands report *"nothing to format"* rather than touching the page.
 |---|---|
 | **Heading 1 / 2 / 3** | Turns the current paragraph into a heading. Type `# `, `## ` or `### ` at the **start of an empty paragraph** and it converts the moment you press space — no ribbon button for this. `Enter` at the end of a heading starts the next paragraph as `Normal text` instead of a second heading. Also reachable from the command palette (`Ctrl+Space`) → *Heading 1 / 2 / 3*. Detecting the typed prefix needs a low-level keyboard hook, since OneNote's API exposes no typing events; it runs only while OneNote is the foreground window and stores no keystrokes, just whether the previous character was `#` (some antivirus tools flag `SetWindowsHookEx`, this is what it's used for). |
 | **Normal text** | Resets the paragraph to plain body text. Command palette (`Ctrl+Space`) → *Normal text*. |
-| **Format code block** | Turns the selected paragraphs into a syntax-highlighted block with its own **Copy** button. Ribbon: *OneNoteMomtion* tab → *Language* group → pick a language from the dropdown, which formats immediately. Palette: `Ctrl+Space` → *Format code block* → pick a language. |
+| **Format code block** | Turns the selected paragraphs into a syntax-highlighted block with its own **Copy** button. Ribbon: *OneNoteMomtion* tab → *Code* group → *Language* → pick a language from the dropdown, which formats immediately. Palette: `Ctrl+Space` → *Format code block* → pick a language. |
 | **Letter case** | UPPER CASE, lower case, Capitalize Each Word, Sentence case, tOGGLE cASE. Ribbon: *Text Case* group (one button each). Palette: `Ctrl+Space` → *Letter case* submenu. |
 | **Reformat page** | Applies the configured styles to every heading and paragraph on the whole page, tidies whitespace and blank paragraphs, and refreshes code blocks. One `Ctrl+Z` undoes all of it. Ribbon: *Tools* group → *Reformat Page*. Palette: `Ctrl+Space` → *Reformat page*. |
 | **Disable / Enable spellcheck** | Gives the selection a language with no dictionary to hide the red underlines, or undoes that. Ribbon: *Tools* group. Palette: `Ctrl+Space` → *Disable / Enable spellcheck*. |
 | **Show in notebook tree** | Expands and selects the current page in OneNote's navigation pane. Ribbon: *Tools* group. Palette: `Ctrl+Space` → *Show in notebook tree*. |
 | **Collapse the notebook tree** | Folds every notebook, section group and section in the navigation pane. Command palette (`Ctrl+Space` → *Collapse the notebook tree*), or add it to the ribbon yourself — see the note below. |
 | **Command palette** | Floating window with fuzzy search over every command above (matches label, hint and keywords). Opens near the caret with the hotkey `Ctrl+Space` (configurable), or via the ribbon's *Settings* button (opens straight into the settings view). |
-| **Settings / style editor** | Edits styles, the syntax-highlighting theme, palette layout and behaviour switches, stored in `%APPDATA%\OneNoteMomtion\styles.json`. Reachable from the ribbon's *Settings* button (opens the editor inside the floating palette) or by editing the JSON file directly — the add-in reloads it automatically, and a malformed file is never overwritten (it falls back to defaults and logs the parse error). Notable switches: `paletteHotkey` (default `Ctrl+Space`), `autoMarkdownTyping` (toggles the heading-on-typing behaviour), `autoNormalAfterHeading`, and a `palette` section controlling which rows the palette shows, their order and labels — see inline comments in the generated file for the full set. |
+| **Settings / style editor** | Edits styles, the syntax-highlighting theme, palette layout and behaviour switches, stored in `%APPDATA%\OneNoteMomtion\styles.json`. Reachable from the ribbon's *Settings* button (opens the editor inside the floating palette) or by editing the JSON file directly — the add-in reloads it automatically, and a malformed file is never overwritten (it falls back to defaults and logs the parse error). Notable switches: `language` (`auto` follows the Windows display language, or `en` / `pl`; the palette, the ribbon, messages and new code blocks switch over as soon as the file is saved, no reinstall or restart needed), `paletteHotkey` (default `Ctrl+Space`), `autoMarkdownTyping` (toggles the heading-on-typing behaviour), `autoNormalAfterHeading`, and a `palette` section controlling which rows the palette shows, their order and labels — see inline comments in the generated file for the full set. |
 
 The **OneNoteMomtion** ribbon tab is an ordinary ribbon customization, so every command on it can be
 added, removed, renamed or moved to another group from *File → Options → Customize Ribbon*. The full
@@ -170,6 +170,7 @@ dotnet build OneNoteMomtion.slnx -c Release
 
 cd OneNoteMomtion.Frontend
 npm install
+npm test
 npm run build
 ```
 
@@ -191,6 +192,13 @@ lays out a self-installing package in `dist\` — zip that folder and ship it.
 **Why two runtimes?** Office resolves ribbon callbacks through `IDispatch`, which .NET Core no
 longer exposes for managed objects — so the piece Office talks to stays on .NET Framework.
 Everything else runs on .NET 10 in its own process, keeping WebView2 off Office's UI thread.
+
+**Adding an interface language:** copy `OneNoteMomtion.Core/Localization/en.json` to a file named after the
+two-letter language code (e.g. `de.json`) and translate the values. It is picked up automatically: `language`
+accepts the new code and `auto` chooses it on a Windows set to that language. Keys ending in `_one`, `_few`,
+`_many` or `_other` are plural forms (CLDR categories); if the language needs other forms than English or
+Polish, add its rule to `PluralRules`. The tests in `LocalizationFilesTests` fail until every text, placeholder
+and plural form is there.
 
 **Adding a syntax-highlighting language:** implement `ISyntaxHighlightProvider` (usually by
 deriving from `RegexTokenizerBase`) and register it in `SyntaxHighlighterRegistry.CreateDefault()`.
