@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Office.Core;
 using OneNoteMomtion.AddIn.Ipc;
@@ -26,17 +27,19 @@ namespace OneNoteMomtion.AddIn
         private volatile List<KeyValuePair<string, string>>? _languages;
         private volatile IReadOnlyDictionary<string, string> _ribbonTexts = new Dictionary<string, string>();
         private volatile bool _ribbonRefreshPending;
+        private volatile string _ribbonLanguage = string.Empty;
         private string _selectedLanguageId = string.Empty;
         private SettingsWatcher? _settingsWatcher;
 
         public void OnRibbonLoad(IRibbonUI ribbon)
         {
             _ribbon = ribbon;
-            ShimLog.Info("Ribbon loaded.");
+            ShimLog.Info("Ribbon loaded on a " + Thread.CurrentThread.GetApartmentState() + " thread.");
 
             try
             {
-                _ribbonTexts = RibbonTexts.Load();
+                _ribbonLanguage = RibbonTexts.CurrentLanguage();
+                _ribbonTexts = RibbonTexts.Load(_ribbonLanguage);
             }
             catch (Exception ex)
             {
@@ -261,14 +264,15 @@ namespace OneNoteMomtion.AddIn
                     return;
                 }
 
-                IReadOnlyDictionary<string, string> current = RibbonTexts.Load();
-                if (SameTexts(_ribbonTexts, current))
+                string language = RibbonTexts.CurrentLanguage();
+                if (language == _ribbonLanguage)
                 {
                     return;
                 }
 
-                ShimLog.Info("The interface language changed - refreshing the ribbon.");
-                _ribbonTexts = current;
+                ShimLog.Info("The interface language changed to \"" + language + "\" - refreshing the ribbon from a " + Thread.CurrentThread.GetApartmentState() + " thread.");
+                _ribbonTexts = RibbonTexts.Load(language);
+                _ribbonLanguage = language;
                 _languages = null;
                 _ribbonRefreshPending = true;
                 RefreshRibbonIfPending();
@@ -277,24 +281,6 @@ namespace OneNoteMomtion.AddIn
             {
                 ShimLog.Error("Failed to refresh the ribbon after styles.json changed.", ex);
             }
-        }
-
-        private static bool SameTexts(IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right)
-        {
-            if (left.Count != right.Count)
-            {
-                return false;
-            }
-
-            foreach (KeyValuePair<string, string> pair in left)
-            {
-                if (!right.TryGetValue(pair.Key, out string? value) || value != pair.Value)
-                {
-                    return false;
-                }
-            }
-
-            return true;
         }
 
         // Called from the settings watcher's thread and again from the next ribbon callback, which runs on the

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Json;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace OneNoteMomtion.AddIn
@@ -23,12 +24,16 @@ namespace OneNoteMomtion.AddIn
         private const string Auto = "auto";
 
         // styles.json may hold comments, which no JSON reader shipped with .NET Framework accepts - and the one
-        // value needed here is a plain top-level string.
+        // value needed here is a plain top-level string, looked for once the comments are cut out.
         private static readonly Regex LanguageSetting = new("\"language\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-        public static IReadOnlyDictionary<string, string> Load()
+        public static string CurrentLanguage()
         {
-            string language = ResolveLanguage(ReadLanguageSetting());
+            return ResolveLanguage(ReadLanguageSetting());
+        }
+
+        public static IReadOnlyDictionary<string, string> Load(string language)
+        {
             Dictionary<string, string> texts = ReadLanguage(English);
 
             if (language != English)
@@ -51,7 +56,7 @@ namespace OneNoteMomtion.AddIn
                     return null;
                 }
 
-                Match match = LanguageSetting.Match(File.ReadAllText(SettingsWatcher.SettingsPath));
+                Match match = LanguageSetting.Match(WithoutComments(File.ReadAllText(SettingsWatcher.SettingsPath)));
                 return match.Success ? match.Groups[1].Value : null;
             }
             catch (IOException ex)
@@ -59,6 +64,54 @@ namespace OneNoteMomtion.AddIn
                 ShimLog.Warn("Failed to read the interface language from styles.json: " + ex.Message);
                 return null;
             }
+        }
+
+        internal static string WithoutComments(string json)
+        {
+            StringBuilder result = new(json.Length);
+            bool inString = false;
+
+            for (int i = 0; i < json.Length; i++)
+            {
+                char c = json[i];
+                char next = i + 1 < json.Length ? json[i + 1] : '\0';
+
+                if (inString)
+                {
+                    result.Append(c);
+
+                    if (c == '\\' && i + 1 < json.Length)
+                    {
+                        result.Append(next);
+                        i++;
+                    }
+                    else if (c == '"')
+                    {
+                        inString = false;
+                    }
+                }
+                else if (c == '/' && next == '/')
+                {
+                    while (i < json.Length && json[i] != '\n')
+                    {
+                        i++;
+                    }
+
+                    result.Append('\n');
+                }
+                else if (c == '/' && next == '*')
+                {
+                    int end = json.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                    i = end < 0 ? json.Length : end + 1;
+                }
+                else
+                {
+                    inString = c == '"';
+                    result.Append(c);
+                }
+            }
+
+            return result.ToString();
         }
 
         private static string ResolveLanguage(string? setting)

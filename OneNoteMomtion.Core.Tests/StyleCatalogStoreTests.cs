@@ -89,6 +89,22 @@ namespace OneNoteMomtion.Core.Tests
         }
 
         [Test]
+        public void Load_WritesTheMigrationBackSoACopyTypedLaterStays()
+        {
+            File.WriteAllText(_path, "{ \"version\": 1, \"codeBlock\": { \"copyButtonText\": \"Copy\" } }");
+
+            StyleCatalogStore.Load(_path);
+            string migrated = File.ReadAllText(_path);
+            File.WriteAllText(_path, migrated.Replace("\"codeBlock\": {", "\"codeBlock\": { \"copyButtonText\": \"Copy\","));
+
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(migrated, Does.Contain("\"version\": 2").And.Not.Contain("copyButtonText"));
+                Assert.That(StyleCatalogStore.Load(_path).CodeBlock.CopyButtonText, Is.EqualTo("Copy"));
+            }
+        }
+
+        [Test]
         public void Load_KeepsCopyChosenInACurrentFile()
         {
             File.WriteAllText(_path, "{ \"version\": 2, \"codeBlock\": { \"copyButtonText\": \"Copy\" } }");
